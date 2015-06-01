@@ -2,6 +2,6 @@ namespace FluentPolicy
 {
     public interface IPolicyRepeatConfigExpressionContinuation<TReturn>
     {
-        IPolicyConfigExpression<TReturn> Then();
+        IPolicyExceptionConfigExpression<TReturn> Then();
     }
 }

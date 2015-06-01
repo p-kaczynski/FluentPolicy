@@ -14,5 +14,14 @@ namespace FluentPolicy
         IPolicyBaseState<TReturn> Rethrow();
         IPolicyBaseState<TReturn> Throw(Func<Exception, Exception> factory);
         IPolicyBaseState<TReturn> Return(Func<Exception, TReturn> factory);
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> Repeat();
+        IPolicyRepeatConfigExpressionContinuation<TReturn> Repeat(Action<Exception> callback);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> Repeat(int numberOfTimes);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> Repeat(int numberOfTimes, Action<Exception, int> callback);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> WaitAndRepeat(TimeSpan[] waitTimes);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> WaitAndRepeat(TimeSpan[] waitTimes, Action<Exception, int> callback);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> WaitAndRepeat(int numberOfTimes, Func<int, TimeSpan> getWaitTime);
+        IPolicyRepeatConfigExpressionContinuation<TReturn> WaitAndRepeat(int numberOfTimes, Func<int, TimeSpan> getWaitTime, Action<Exception, int> callback);
     }
 }

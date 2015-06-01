@@ -1,4 +1,5 @@
 ﻿using System;
+using Moq;
 using Should;
 using Xunit;
 
@@ -6,8 +7,16 @@ namespace FluentPolicy.Tests
 {
     public class PolicyBuilderTests
     {
+        private readonly Mock<ITestRepeat> _repeatMock = new Mock<ITestRepeat>();
+        private readonly ITestRepeat _repeat;
+
         private const string SampleExceptionMessage = "qwertyuiop";
         private const string SampleReturnString = "zxccvbnm";
+
+        public PolicyBuilderTests()
+        {
+            _repeat = _repeatMock.Object;
+        }
 
         [Fact]
         public void CanBuildPolicy()
@@ -167,6 +176,105 @@ namespace FluentPolicy.Tests
                 .ShouldEqual(otherMessage);
         }
 
+        // Retries
+
+        [Fact]
+        public void Repeat_Once()
+        {
+            _repeatMock.Setup(r => r.Call()).Throws<TestException>();
+            var result = As.Func(() => _repeat.Call()).WithPolicy()
+                .For().Exception<TestException>().Repeat().Then().Return(-1)
+                .Execute();
+
+            result.ShouldEqual(-1);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(2));
+        }
+
+        [Fact]
+        public void Repeat_NTimes()
+        {
+            const int howMany = 5;
+
+            _repeatMock.Setup(r => r.Call()).Throws<TestException>();
+            var result = As.Func(() => _repeat.Call()).WithPolicy()
+                .For().Exception<TestException>().Repeat(howMany).Then().Return(-1)
+                .Execute();
+
+            result.ShouldEqual(-1);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany + 1));
+        }
+
+        [Fact]
+        public void Repeat_CallsCallback()
+        {
+            const int howMany = 5;
+
+            _repeatMock.Setup(r => r.Call());
+
+            var result = As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<TestException>().Repeat(howMany,(e, i)=>_repeat.Call()).Then().Return(SampleReturnString)
+                .Execute();
+
+            result.ShouldEqual(SampleReturnString);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany));
+        }
+
+        [Fact]
+        public void WaitAndRepeat_FromTimeSpans()
+        {
+            var timeSpans = new[] { TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(300) };
+
+            _repeatMock.Setup(r => r.Call()).Throws<TestException>();
+            var result = As.Func(() => _repeat.Call()).WithPolicy()
+                .For().Exception<TestException>().WaitAndRepeat(timeSpans).Then().Return(-1)
+                .Execute();
+
+            result.ShouldEqual(-1);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(timeSpans.Length + 1));
+        }
+
+        [Fact]
+        public void WaitAndRepeat_FromTimeSpansWithCallback()
+        {
+            var timeSpans = new[] { TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(300) };
+
+            _repeatMock.Setup(r => r.Call());
+            var result = As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<TestException>().WaitAndRepeat(timeSpans, (exception, i) => _repeat.Call()).Then().Return(SampleReturnString)
+                .Execute();
+
+            result.ShouldEqual(SampleReturnString);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(timeSpans.Length));
+        }
+
+        [Fact]
+        public void WaitAndRepeat_FromFunction()
+        {
+            const int howMany = 5;
+
+            _repeatMock.Setup(r => r.Call()).Throws<TestException>();
+            var result = As.Func(() => _repeat.Call()).WithPolicy()
+                .For().Exception<TestException>().WaitAndRepeat(howMany, i=>TimeSpan.FromMilliseconds(10*Math.Pow(2,i))).Then().Return(-1)
+                .Execute();
+
+            result.ShouldEqual(-1);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany + 1));
+        }
+
+        [Fact]
+        public void WaitAndRepeat_FromFunctionWithCallback()
+        {
+            const int howMany = 5;
+
+            _repeatMock.Setup(r => r.Call());
+            var result = As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<TestException>().WaitAndRepeat(howMany, i => TimeSpan.FromMilliseconds(10 * Math.Pow(2, i)), (exception, i) => _repeat.Call()).Then().Return(SampleReturnString)
+                .Execute();
+
+            result.ShouldEqual(SampleReturnString);
+            _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany));
+        }
+
 
         // --- methods to call ---
 
@@ -191,6 +299,8 @@ namespace FluentPolicy.Tests
         {
             throw ReusableException;
         }
+
+        // --- test exceptions to make sure actual exceptions from framework doesn't get picked up by asserts ---
 
         class TestException : Exception
         {
@@ -231,5 +341,11 @@ namespace FluentPolicy.Tests
             {
             }
         }
+    }
+    // --- interface for repeating testing ---
+
+    public interface ITestRepeat
+    {
+        int Call();
     }
 }

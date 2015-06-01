@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 namespace FluentPolicy
 {
     public class PolicyBuilder<TReturn> : IPolicyBaseState<TReturn>, IPolicyConditionSelector<TReturn>,
-        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>
+        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>
     {
         private readonly Func<TReturn> _func;
         private readonly Task<TReturn> _task;
@@ -20,6 +21,8 @@ namespace FluentPolicy
             new Stack<PredicatedBehaviour<TReturn, TReturn>>();
 
         private PredicatedBehaviour<TReturn> _lastCreatedBehaviour;
+
+        private readonly RepeatHelper _repeatHelper = new RepeatHelper();
 
         public PolicyBuilder(Func<TReturn> func)
         {
@@ -39,6 +42,7 @@ namespace FluentPolicy
 
         TReturn IPolicyBaseState<TReturn>.Execute()
         {
+            _repeatHelper.Reset();
             while (true)
             {
                 try
@@ -54,27 +58,38 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
-                        var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(ex));
-                        if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
-                        return exceptionBehaviour.Behaviour(ex);
+                        var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+                        return exceptionBehaviour.Call(ex);
                     }
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
-                    return resultBehaviour == null ? result : resultBehaviour.Behaviour(result);
+                    return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
-                    Thread.Sleep(waitAndRetry.WaitTime);
+                    var sleepTime = waitAndRetry.WaitTime;
+                    if (sleepTime.TotalSeconds > 0)
+                        Thread.Sleep(sleepTime);
                 }
                 catch (FailureLimitExceededException flee)
                 {
-
+                    var ex = flee.InnerException;
+                    var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex) && b.Id != flee.FailedBehaviourId);
+                    return exceptionBehaviour.Call(ex);
                 }
             }
+        }
+
+        private PredicatedBehaviour<Exception, TReturn> GetExceptionBehaviour(Exception ex, Func<PredicatedBehaviour<Exception, TReturn>, bool> predicate)
+        {
+            var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
+            if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
+            return exceptionBehaviour;
         }
 
         // TODO: somehow remove redundancy between nonasync and async
         async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync()
         {
+            _repeatHelper.Reset();
             while (true)
             {
                 try
@@ -84,22 +99,29 @@ namespace FluentPolicy
                     {
                         result = await _task;
                     }
+                    catch (AsyncPolicyException)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
-                        var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(ex));
-                        if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
-                        return exceptionBehaviour.Behaviour(ex);
+                        var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+                        return exceptionBehaviour.Call(ex);
                     }
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
-                    return resultBehaviour == null ? result : resultBehaviour.Behaviour(result);
+                    return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
-                    Thread.Sleep(waitAndRetry.WaitTime);
+                    var sleepTime = waitAndRetry.WaitTime;
+                    if (sleepTime.TotalSeconds > 0)
+                        Thread.Sleep(sleepTime);
                 }
                 catch (FailureLimitExceededException flee)
                 {
-
+                    var ex = flee.InnerException;
+                    var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex) && b.Id != flee.FailedBehaviourId);
+                    return exceptionBehaviour.Call(ex);
                 }
             }
         }
@@ -143,11 +165,6 @@ namespace FluentPolicy
             _exceptionBehaviourStack.Peek().AddPredicate(e => e is TException && predicate((TException) e));
 
             return this;
-        }
-
-        IPolicyRepeatConfigExpression<TReturn> IPolicyConfigExpression<TReturn>.Repeat()
-        {
-            throw new NotImplementedException();
         }
 
         IPolicyBaseState<TReturn> IPolicyExceptionConfigExpression<TReturn>.Rethrow()
@@ -226,6 +243,111 @@ namespace FluentPolicy
 
             _resultBehaviourStack.Push(behaviour);
             return this;
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.Repeat()
+        {
+            return ((IPolicyExceptionConfigExpression<TReturn>) this).Repeat(1, (e, i) => { });
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.Repeat(Action<Exception> callback)
+        {
+            return ((IPolicyExceptionConfigExpression<TReturn>) this).Repeat(1, (e, i) => callback(e));
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.Repeat(int numberOfTimes)
+        {
+            return ((IPolicyExceptionConfigExpression<TReturn>)this).Repeat(numberOfTimes, (e, i) => { });
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.Repeat(int numberOfTimes, Action<Exception, int> callback)
+        {
+            _exceptionBehaviourStack.Peek()
+                .SetGuidBehaviour(
+                    (exception, guid) => _repeatHelper.Handle<TReturn>(guid, exception, numberOfTimes, callback));
+
+            return this;
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.WaitAndRepeat(TimeSpan[] waitTimes)
+        {
+            return ((IPolicyExceptionConfigExpression<TReturn>) this).WaitAndRepeat(waitTimes, (e, i) => { });
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.WaitAndRepeat(TimeSpan[] waitTimes, Action<Exception, int> callback)
+        {
+            _exceptionBehaviourStack.Peek()
+                .SetGuidBehaviour(
+                    (exception, guid) =>
+                        _repeatHelper.Handle<TReturn>(guid, exception, waitTimes.Length, waitTimes, callback));
+
+            return this;
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.WaitAndRepeat(int numberOfTimes, Func<int, TimeSpan> getWaitTime)
+        {
+            return ((IPolicyExceptionConfigExpression<TReturn>) this).WaitAndRepeat(numberOfTimes, getWaitTime,
+                (e, i) => { });
+        }
+
+        IPolicyRepeatConfigExpressionContinuation<TReturn> IPolicyExceptionConfigExpression<TReturn>.WaitAndRepeat(
+            int numberOfTimes, Func<int, TimeSpan> getWaitTime, Action<Exception, int> callback)
+        {
+            _exceptionBehaviourStack.Peek()
+                .SetGuidBehaviour(
+                    (exception, guid) =>
+                        _repeatHelper.Handle<TReturn>(guid, exception, numberOfTimes, getWaitTime, callback));
+
+            return this;
+        }
+
+        IPolicyExceptionConfigExpression<TReturn> IPolicyRepeatConfigExpressionContinuation<TReturn>.Then()
+        {
+            var behaviour = new PredicatedBehaviour<Exception, TReturn>();
+            _exceptionBehaviourStack.Peek().CopyPredicatesTo(behaviour);
+            
+            _lastCreatedBehaviour = behaviour;
+            _exceptionBehaviourStack.Push(behaviour); 
+            
+            return this;
+        }
+    }
+
+    internal class RepeatHelper
+    {
+        public void Reset()
+        {
+            _retryDictionary.Clear();
+        }
+        private readonly ConcurrentDictionary<Guid,int> _retryDictionary = new ConcurrentDictionary<Guid,int>();
+
+        private static readonly TimeSpan[] ZeroTimeSpanArray = {TimeSpan.FromSeconds(0)};
+        public T Handle<T>(Guid behaviourId, Exception ex, int maximumRetries,  Action<Exception, int> callback)
+        {
+            return Handle<T>(behaviourId, ex, maximumRetries, ZeroTimeSpanArray, callback);
+        }
+
+        public T Handle<T>(Guid behaviourId, Exception ex, int maximumRetries, TimeSpan[] waitTimes, Action<Exception, int> callback)
+        {
+            return Handle<T>(behaviourId, ex, maximumRetries,
+                retry => retry > waitTimes.Length ? waitTimes.Last() : waitTimes[retry - 1], callback);
+        }
+
+        public T Handle<T>(Guid behaviourId, Exception ex, int maximumRetries, Func<int, TimeSpan> getWaitTime, Action<Exception, int> callback)
+        {
+            var retry = _retryDictionary.AddOrUpdate(behaviourId, 1, (id, count) => count + 1);
+
+            if (retry > maximumRetries)
+                throw new FailureLimitExceededException(ex, behaviourId);
+
+            callback(ex, retry);
+            var waitTime = getWaitTime(retry);
+            throw new WaitAndRetry(waitTime);
+
+#pragma warning disable 162
+            // ReSharper disable once HeuristicUnreachableCode
+            return default(T); // for compiler :)
+#pragma warning restore 162
         }
     }
 }

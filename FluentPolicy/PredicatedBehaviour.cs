@@ -11,12 +11,31 @@ namespace FluentPolicy
 
     internal class PredicatedBehaviour<TPredicate, TReturn> : PredicatedBehaviour<TReturn>
     {
+        public Guid Id { get; private set; }
+
+        public PredicatedBehaviour()
+        {
+            Id = Guid.NewGuid();
+        } 
+
         private readonly List<Func<TPredicate, bool>> _predicates = new List<Func<TPredicate, bool>>();
-        public Func<TPredicate, TReturn> Behaviour { get; set; }
+
+        private Func<TPredicate, Guid, TReturn> _behaviour;
+
+        public Func<TPredicate, TReturn> Behaviour
+        {
+            set { _behaviour = (input, guid) => value(input); }
+        }
 
         public void AddPredicate(Func<TPredicate, bool> predicate)
         {
             _predicates.Add(predicate);
+        }
+
+        public void CopyPredicatesTo(PredicatedBehaviour<TPredicate, TReturn> target)
+        {
+            foreach(var predicate in _predicates)
+                target.AddPredicate(predicate);
         }
 
         public bool Test(TPredicate value)
@@ -26,7 +45,17 @@ namespace FluentPolicy
 
         public override void SetSimpleBehaviour(Func<TReturn> factory)
         {
-            Behaviour = predicate => factory();
+            _behaviour = (predicate, guid) => factory();
+        }
+
+        public void SetGuidBehaviour(Func<TPredicate, Guid, TReturn> behaviour)
+        {
+            _behaviour = behaviour;
+        }
+
+        public TReturn Call(TPredicate input)
+        {
+            return _behaviour(input, Id);
         }
     }
 }
