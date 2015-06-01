@@ -11,6 +11,7 @@ namespace FluentPolicy
             where TException : Exception;
 
         IPolicyReturnValueConfigExpression<TReturn> ReturnValue(Func<TReturn, bool> predicate);
+
         IPolicyExceptionConfigExpression<TReturn> AllOtherExceptions();
         IPolicyReturnValueConfigExpression<TReturn> AllOtherValues();
     }

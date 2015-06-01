@@ -48,6 +48,7 @@
     <Compile Include="IPolicyRepeatConfigExpression.cs" />
     <Compile Include="IPolicyRepeatConfigExpressionContinuation.cs" />
     <Compile Include="IPolicyReturnValueConfigExpression.cs" />
+    <Compile Include="AsyncPolicyException.cs" />
     <Compile Include="NoMatchingPolicyException.cs" />
     <Compile Include="PolicyAttachmentHelper.cs" />
     <Compile Include="PolicyBuilder.cs" />

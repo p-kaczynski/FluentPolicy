@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Should;
 using Xunit;
 
 namespace FluentPolicy.Tests
 {
-    public class PolicyBuilderTests
+    public class PolicyBuilderAsyncTests
     {
         private const string SampleExceptionMessage = "qwertyuiop";
         private const string SampleReturnString = "zxccvbnm";
@@ -13,186 +14,230 @@ namespace FluentPolicy.Tests
         public void CanBuildPolicy()
         {
             var policy =
-                As.Func(TestFunction).WithPolicy()
+                TestFunction().WithPolicy()
                     .For().Exception<TestException>().Throw(ae => new Exception(SampleExceptionMessage, ae))
                     .For().Exception<ArgumentNullException>().Rethrow()
                     .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(s => s.ToUpper())
-                    ;
+                ;
             policy.ShouldNotBeNull();
         }
 
         [Fact]
-        public void NoExceptions()
+        public async Task NoExceptions()
         {
-            As.Func(TestFunction).WithPolicy()
+            var result = await TestFunction().WithPolicy()
                 .For().Exception<TestException>().Rethrow()
-                .Execute().ShouldEqual(SampleReturnString);
+                .ExecuteAsync();
+                
+                result.ShouldEqual(SampleReturnString);
         }
 
         [Fact]
-        public void ReturnValueTransformation()
+        public async Task ReturnValueTransformation()
         {
             const string testString = "fnord";
 
-            As.Func(TestFunction).WithPolicy()
+            var result = await TestFunction().WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(testString)
-                .Execute().ShouldEqual(testString);
+                .ExecuteAsync();
+
+            result.ShouldEqual(testString);
         }
 
         [Fact]
-        public void ReturnValueExceptionThrowing()
+        public async Task ReturnValueExceptionThrowing()
         {
             const string testString = "fnord";
 
-            Assert.Throws<Exception>(() => As.Func(TestFunction).WithPolicy()
+            var ex = await Assert.ThrowsAsync<Exception>(() => TestFunction().WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Throw(s => new Exception(s))
-                .Execute()
-                ).Message.ShouldEqual(SampleReturnString);
+                .ExecuteAsync()
+                );
+
+            ex.Message.ShouldEqual(SampleReturnString);
         }
 
         [Fact]
-        public void ForExceptionReturnValue()
+        public async Task ForExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            As.Func(TestFunctionException).WithPolicy()
+            var result = await TestFunctionException().WithPolicy()
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldEqual(otherReturnValue);
+                .ExecuteAsync();
+            
+            result.ShouldEqual(otherReturnValue);
         }
 
         [Fact]
-        public void ForOrExceptionReturnValue()
+        public async Task ForOrExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            As.Func(TestFunctionException).WithPolicy()
+            var result = await TestFunctionException().WithPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldEqual(otherReturnValue);
+                .ExecuteAsync();
+            
+            result.ShouldEqual(otherReturnValue);
         }
 
 
         ///<remarks> This also tests for correct order of evaluation</remarks>
         [Fact]
-        public void ForPredicatedExceptionReturnValue()
+        public async Task ForPredicatedExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            As.Func(TestFunctionExceptionWithMessage).WithPolicy()
+            var result = await TestFunctionExceptionWithMessage().WithPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
-                .For().Exception<TestException>(e=>e.Message.Equals(SampleReturnString)).Rethrow()
-                .For().Exception<TestException>().Throw(e=>new Exception("This should not get thrown"))
-                .Execute().ShouldEqual(otherReturnValue);
+                .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
+                .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
+                .ExecuteAsync();
+            
+            result.ShouldEqual(otherReturnValue);
         }
 
         [Fact]
-        public void ForOrPredicatedExceptionReturnValue()
+        public async Task ForOrPredicatedExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            As.Func(TestFunctionExceptionWithMessage).WithPolicy()
+            
+            var result = await TestFunctionExceptionWithMessage().WithPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
-                .Execute().ShouldEqual(otherReturnValue);
+                .ExecuteAsync();
+            
+            result.ShouldEqual(otherReturnValue);
         }
 
         [Fact]
-        public void ForExceptionRethrow()
+        public async Task ForExceptionRethrow()
         {
-            var ex = Assert.Throws<TestException>(() => As.Func(TestFunctionReusableException).WithPolicy()
+            var ex = await Assert.ThrowsAsync<TestException>(() => TestFunctionReusableException().WithPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Rethrow()
                 .For().Exception<TestException>().Return(SampleReturnString)
-                .Execute()
+                .ExecuteAsync()
                 );
+
             ex.ShouldBeSameAs(ReusableException);
         }
 
         [Fact]
-        public void ForPredicatedExceptionThrow()
+        public void ForExecuteIfMadeFromTaskThrow()
+        {
+            Assert.Throws<AsyncPolicyException>(() => TestFunctionReusableException().WithPolicy()
+                .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Rethrow()
+                .For().Exception<TestException>().Return(SampleReturnString)
+                .Execute()
+                );
+        }
+
+        [Fact]
+        public async Task ForPredicatedExceptionThrow()
         {
             const string otherReturnValue = "discordia";
             const string testMessage = "my message";
-            var ex = Assert.Throws<OtherTestException>(() => As.Func(TestFunctionExceptionWithMessage).WithPolicy()
-                .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Throw(e => new OtherTestException(testMessage, e))
+            
+            var ex = await Assert.ThrowsAsync<OtherTestException>(() => TestFunctionExceptionWithMessage().WithPolicy()
+                .For()
+                .Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage))
+                .Throw(e => new OtherTestException(testMessage, e))
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Return(otherReturnValue)
                 .For().Exception<TestException>().Return(otherReturnValue)
-                .Execute());
+                .ExecuteAsync());
+
             ex.ShouldNotBeNull();
             ex.Message.ShouldEqual(testMessage);
         }
 
         [Fact]
-        public void NotDefinedExceptionThrowException()
+        public async Task NotDefinedExceptionThrowException()
         {
-            Assert.Throws<NoMatchingPolicyException>(() => As.Func(TestFunctionException).WithPolicy()
+            await Assert.ThrowsAsync<NoMatchingPolicyException>(() => TestFunctionException().WithPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
-                .Execute()
+                .ExecuteAsync()
                 );
         }
 
         [Fact]
-        public void ForAllOtherExceptionsRethrows()
+        public async Task ForAllOtherExceptionsRethrows()
         {
-            Assert.Throws<TestException>(() => As.Func(TestFunctionException).WithPolicy()
+            await Assert.ThrowsAsync<TestException>(() => TestFunctionException().WithPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Rethrow()
-                .Execute()
+                .ExecuteAsync()
                 );
         }
 
         [Fact]
-        public void ForAllOtherExceptionsThrows()
+        public async Task ForAllOtherExceptionsThrows()
         {
             const string testMessage = "some message";
 
-            var ex = Assert.Throws<TestException>(() => As.Func(TestFunctionException).WithPolicy()
+            var ex = await  Assert.ThrowsAsync<TestException>(() => TestFunctionException().WithPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Throw(e => new TestException(testMessage))
-                .Execute()
+                .ExecuteAsync()
                 );
+
             ex.Message.ShouldEqual(testMessage);
         }
 
         [Fact]
-        public void ForAllOtherExceptionsReturnsValue()
+        public async Task ForAllOtherExceptionsReturnsValue()
         {
             const string otherMessage = "Iä! Iä! Cthulhu Fhtagn!";
 
-            As.Func(TestFunctionException).WithPolicy()
+            var result = await TestFunctionException().WithPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Return(otherMessage)
-                .Execute()
-                .ShouldEqual(otherMessage);
+                .ExecuteAsync();
+
+                result.ShouldEqual(otherMessage);
         }
 
 
         // --- methods to call ---
 
-        private static string TestFunction()
+        private static Task<string> TestFunction()
         {
-            return SampleReturnString;
+            return Task.Run(() => SampleReturnString);
         }
 
-        private static string TestFunctionException()
+        private static Task<string> TestFunctionException()
         {
-            throw new TestException();
+            return Task.Run(() =>
+            {
+                throw new TestException();
+                return string.Empty;
+            });
         }
 
-        private static string TestFunctionExceptionWithMessage()
+        private static Task<string> TestFunctionExceptionWithMessage()
         {
-            throw new TestException(SampleExceptionMessage);
+            return Task.Run(() =>
+            {
+                throw new TestException(SampleExceptionMessage);
+                return string.Empty;
+            });
         }
 
         private static readonly TestException ReusableException = new TestException(SampleExceptionMessage);
 
-        private static string TestFunctionReusableException()
+        private static Task<string> TestFunctionReusableException()
         {
-            throw ReusableException;
+            return Task.Run(() =>
+            {
+                throw ReusableException;
+                return string.Empty;
+            });
         }
 
-        class TestException : Exception
+        private class TestException : Exception
         {
             public TestException()
             {
@@ -204,7 +249,7 @@ namespace FluentPolicy.Tests
             }
         }
 
-        class OtherTestException : Exception
+        private class OtherTestException : Exception
         {
             public OtherTestException()
             {
@@ -220,7 +265,7 @@ namespace FluentPolicy.Tests
             }
         }
 
-        class DifferentException : Exception
+        private class DifferentException : Exception
         {
             public DifferentException()
             {

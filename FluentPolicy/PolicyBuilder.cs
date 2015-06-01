@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FluentPolicy
 {
@@ -10,6 +11,7 @@ namespace FluentPolicy
         IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>
     {
         private readonly Func<TReturn> _func;
+        private readonly Task<TReturn> _task;
 
         private readonly Stack<PredicatedBehaviour<Exception, TReturn>> _exceptionBehaviourStack =
             new Stack<PredicatedBehaviour<Exception, TReturn>>();
@@ -24,6 +26,17 @@ namespace FluentPolicy
             _func = func;
         }
 
+        public PolicyBuilder(Task<TReturn> task)
+        {
+            _task = task;
+            _func =
+                () =>
+                {
+                    throw new AsyncPolicyException(
+                        "This policy was created from a task, and must be executed using ExecuteAsync");
+                };
+        }
+
         TReturn IPolicyBaseState<TReturn>.Execute()
         {
             while (true)
@@ -34,6 +47,42 @@ namespace FluentPolicy
                     try
                     {
                         result = _func();
+                    }
+                    catch (AsyncPolicyException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(ex));
+                        if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
+                        return exceptionBehaviour.Behaviour(ex);
+                    }
+                    var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+                    return resultBehaviour == null ? result : resultBehaviour.Behaviour(result);
+                }
+                catch (WaitAndRetry waitAndRetry)
+                {
+                    Thread.Sleep(waitAndRetry.WaitTime);
+                }
+                catch (FailureLimitExceededException flee)
+                {
+
+                }
+            }
+        }
+
+        // TODO: somehow remove redundancy between nonasync and async
+        async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync()
+        {
+            while (true)
+            {
+                try
+                {
+                    TReturn result;
+                    try
+                    {
+                        result = await _task;
                     }
                     catch (Exception ex)
                     {
@@ -106,6 +155,7 @@ namespace FluentPolicy
             _exceptionBehaviourStack.Peek().Behaviour = e =>
             {
                 ExceptionDispatchInfo.Capture(e).Throw();
+
                 throw new Exception("ExceptionDispatchInfo.Throw failed to break execution!");
             };
 
