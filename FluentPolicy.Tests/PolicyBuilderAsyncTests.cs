@@ -14,7 +14,7 @@ namespace FluentPolicy.Tests
         public void CanBuildPolicy()
         {
             var policy =
-                TestFunction().WithPolicy()
+                As.Func(TestFunction).WithAsyncPolicy()
                     .For().Exception<TestException>().Throw(ae => new Exception(SampleExceptionMessage, ae))
                     .For().Exception<ArgumentNullException>().Rethrow()
                     .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(s => s.ToUpper())
@@ -25,7 +25,7 @@ namespace FluentPolicy.Tests
         [Fact]
         public async Task NoExceptions()
         {
-            var result = await TestFunction().WithPolicy()
+            var result = await As.Func(TestFunction).WithAsyncPolicy()
                 .For().Exception<TestException>().Rethrow()
                 .ExecuteAsync();
                 
@@ -37,7 +37,7 @@ namespace FluentPolicy.Tests
         {
             const string testString = "fnord";
 
-            var result = await TestFunction().WithPolicy()
+            var result = await As.Func(TestFunction).WithAsyncPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(testString)
                 .ExecuteAsync();
 
@@ -49,7 +49,7 @@ namespace FluentPolicy.Tests
         {
             const string testString = "fnord";
 
-            var ex = await Assert.ThrowsAsync<Exception>(() => TestFunction().WithPolicy()
+            var ex = await Assert.ThrowsAsync<Exception>(() => As.Func(TestFunction).WithAsyncPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Throw(s => new Exception(s))
                 .ExecuteAsync()
                 );
@@ -61,7 +61,7 @@ namespace FluentPolicy.Tests
         public async Task ForExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            var result = await TestFunctionException().WithPolicy()
+            var result = await As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
                 .ExecuteAsync();
@@ -73,7 +73,7 @@ namespace FluentPolicy.Tests
         public async Task ForOrExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            var result = await TestFunctionException().WithPolicy()
+            var result = await As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
                 .ExecuteAsync();
@@ -87,7 +87,7 @@ namespace FluentPolicy.Tests
         public async Task ForPredicatedExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            var result = await TestFunctionExceptionWithMessage().WithPolicy()
+            var result = await As.Func(TestFunctionExceptionWithMessage).WithAsyncPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
@@ -100,8 +100,8 @@ namespace FluentPolicy.Tests
         public async Task ForOrPredicatedExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";
-            
-            var result = await TestFunctionExceptionWithMessage().WithPolicy()
+
+            var result = await As.Func(TestFunctionExceptionWithMessage).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
@@ -113,7 +113,7 @@ namespace FluentPolicy.Tests
         [Fact]
         public async Task ForExceptionRethrow()
         {
-            var ex = await Assert.ThrowsAsync<TestException>(() => TestFunctionReusableException().WithPolicy()
+            var ex = await Assert.ThrowsAsync<TestException>(() => As.Func(TestFunctionReusableException).WithAsyncPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Rethrow()
                 .For().Exception<TestException>().Return(SampleReturnString)
                 .ExecuteAsync()
@@ -125,7 +125,7 @@ namespace FluentPolicy.Tests
         [Fact]
         public void ForExecuteIfMadeFromTaskThrow()
         {
-            Assert.Throws<AsyncPolicyException>(() => TestFunctionReusableException().WithPolicy()
+            Assert.Throws<AsyncPolicyException>(() => As.Func(TestFunctionReusableException).WithAsyncPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Rethrow()
                 .For().Exception<TestException>().Return(SampleReturnString)
                 .Execute()
@@ -137,11 +137,9 @@ namespace FluentPolicy.Tests
         {
             const string otherReturnValue = "discordia";
             const string testMessage = "my message";
-            
-            var ex = await Assert.ThrowsAsync<OtherTestException>(() => TestFunctionExceptionWithMessage().WithPolicy()
-                .For()
-                .Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage))
-                .Throw(e => new OtherTestException(testMessage, e))
+
+            var ex = await Assert.ThrowsAsync<OtherTestException>(() => As.Func(TestFunctionExceptionWithMessage).WithAsyncPolicy()
+                .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Throw(e => new OtherTestException(testMessage, e))
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Return(otherReturnValue)
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .ExecuteAsync());
@@ -153,7 +151,7 @@ namespace FluentPolicy.Tests
         [Fact]
         public async Task NotDefinedExceptionThrowException()
         {
-            await Assert.ThrowsAsync<NoMatchingPolicyException>(() => TestFunctionException().WithPolicy()
+            await Assert.ThrowsAsync<NoMatchingPolicyException>(() => As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .ExecuteAsync()
@@ -163,7 +161,7 @@ namespace FluentPolicy.Tests
         [Fact]
         public async Task ForAllOtherExceptionsRethrows()
         {
-            await Assert.ThrowsAsync<TestException>(() => TestFunctionException().WithPolicy()
+            await Assert.ThrowsAsync<TestException>(() => As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Rethrow()
@@ -176,7 +174,7 @@ namespace FluentPolicy.Tests
         {
             const string testMessage = "some message";
 
-            var ex = await  Assert.ThrowsAsync<TestException>(() => TestFunctionException().WithPolicy()
+            var ex = await Assert.ThrowsAsync<TestException>(() => As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Throw(e => new TestException(testMessage))
@@ -191,7 +189,7 @@ namespace FluentPolicy.Tests
         {
             const string otherMessage = "Iä! Iä! Cthulhu Fhtagn!";
 
-            var result = await TestFunctionException().WithPolicy()
+            var result = await As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Return(otherMessage)

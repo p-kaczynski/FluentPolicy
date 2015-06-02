@@ -12,7 +12,7 @@ namespace FluentPolicy
         IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>
     {
         private readonly Func<TReturn> _func;
-        private readonly Task<TReturn> _task;
+        private readonly Func<Task<TReturn>> _funcAsync;
 
         private readonly Stack<PredicatedBehaviour<Exception, TReturn>> _exceptionBehaviourStack =
             new Stack<PredicatedBehaviour<Exception, TReturn>>();
@@ -29,14 +29,14 @@ namespace FluentPolicy
             _func = func;
         }
 
-        public PolicyBuilder(Task<TReturn> task)
+        public PolicyBuilder(Func<Task<TReturn>> func)
         {
-            _task = task;
+            _funcAsync = func;
             _func =
                 () =>
                 {
                     throw new AsyncPolicyException(
-                        "This policy was created from a task, and must be executed using ExecuteAsync");
+                        "This policy was created from an async function, and must be executed using ExecuteAsync");
                 };
         }
 
@@ -97,11 +97,7 @@ namespace FluentPolicy
                     TReturn result;
                     try
                     {
-                        result = await _task;
-                    }
-                    catch (AsyncPolicyException)
-                    {
-                        throw;
+                        result = await _funcAsync();
                     }
                     catch (Exception ex)
                     {

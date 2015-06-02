@@ -10,9 +10,9 @@ namespace FluentPolicy
             return new PolicyBuilder<TReturn>(func);
         }
 
-        public static IPolicyBaseState<TReturn> WithPolicy<TReturn>(this Task<TReturn> task)
+        public static IPolicyBaseState<TReturn> WithAsyncPolicy<TReturn>(this Func<Task<TReturn>> func)
         {
-            return new PolicyBuilder<TReturn>(task);
+            return new PolicyBuilder<TReturn>(func);
         }
     }
 }
