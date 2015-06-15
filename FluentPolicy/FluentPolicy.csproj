@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="Call.cs" />
     <Compile Include="FailureLimitExceededException.cs" />
+    <Compile Include="ILoggingExpression.cs" />
     <Compile Include="IPolicyBaseState.cs" />
     <Compile Include="IPolicyConditionSelector.cs" />
     <Compile Include="IPolicyConfigExpression.cs" />
