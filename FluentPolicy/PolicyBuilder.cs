@@ -335,7 +335,6 @@ namespace FluentPolicy
 
         IPolicyBaseState<TReturn> ILoggingExpression<TReturn>.Exceptions(Action<Exception> exceptionLogAction)
         {
-            if(_exceptionLogAction != null) throw new InvalidOperationException("The exception log action was already set");
             _exceptionLogAction = exceptionLogAction;
 
             return this;
@@ -343,7 +342,6 @@ namespace FluentPolicy
 
         IPolicyBaseState<TReturn> ILoggingExpression<TReturn>.ReturnValues(Action<TReturn> returnValueLogAction)
         {
-            if (_returnValueLogAction != null) throw new InvalidOperationException("The return value log action was already set");
             _returnValueLogAction = returnValueLogAction;
 
             return this;
