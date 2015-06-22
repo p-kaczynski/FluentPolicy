@@ -46,6 +46,7 @@
     <Compile Include="IPolicyConditionSelector.cs" />
     <Compile Include="IPolicyConfigExpression.cs" />
     <Compile Include="IPolicyExceptionConfigExpression.cs" />
+    <Compile Include="IPolicyModule.cs" />
     <Compile Include="IPolicyRepeatConfigExpressionContinuation.cs" />
     <Compile Include="IPolicyReturnValueConfigExpression.cs" />
     <Compile Include="AsyncPolicyException.cs" />

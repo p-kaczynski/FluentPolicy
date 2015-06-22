@@ -9,10 +9,12 @@ using System.Threading.Tasks;
 namespace FluentPolicy
 {
     public class PolicyBuilder<TReturn> : IPolicyBaseState<TReturn>, IPolicyConditionSelector<TReturn>,
-        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>, ILoggingExpression<TReturn>
+        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>, ILoggingExpression<TReturn>, IPolicyEvents<TReturn>
     {
         private readonly Func<TReturn> _func;
         private readonly Func<Task<TReturn>> _funcAsync;
+
+        private readonly ICollection<IPolicyModule> _modules = new List<IPolicyModule>(); 
 
         private readonly Stack<PredicatedBehaviour<Exception, TReturn>> _exceptionBehaviourStack =
             new Stack<PredicatedBehaviour<Exception, TReturn>>();
@@ -49,6 +51,14 @@ namespace FluentPolicy
             return this;
         }
 
+        public IPolicyBaseState<TReturn> AddModule(IPolicyModule module)
+        {
+            _modules.Add(module);
+            module.RegisterEvents(this);
+            
+            return this;
+        }
+
         TReturn IPolicyBaseState<TReturn>.Execute()
         {
             _repeatHelper.Reset();
@@ -56,6 +66,9 @@ namespace FluentPolicy
             {
                 try
                 {
+                    foreach(var module in _modules)
+                        module.BeforeCall();
+
                     TReturn result;
                     try
                     {
@@ -67,12 +80,33 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
+                        if (ExceptionThrown != null)
+                            ExceptionThrown(this, ex);
+
+                        // TODO: Move to module?
                         LogException(ex);
+
+                        // Find behaviour
                         var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+
+                        // apply
                         return exceptionBehaviour.Call(ex);
                     }
+                    // Result obtained!
+                    if (ReturnValueObtained != null)
+                        ReturnValueObtained(this, result);
+
+                    // TODO: move to module?
                     LogReturnValue(result);
+                    
+                    // Call modules
+                    foreach (var module in _modules)
+                        module.AfterCall();
+
+                    // Find behaviour
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+
+                    // If behaviour found, apply, then return result
                     return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
@@ -88,13 +122,6 @@ namespace FluentPolicy
                     return exceptionBehaviour.Call(ex);
                 }
             }
-        }
-
-        private PredicatedBehaviour<Exception, TReturn> GetExceptionBehaviour(Exception ex, Func<PredicatedBehaviour<Exception, TReturn>, bool> predicate)
-        {
-            var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
-            if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
-            return exceptionBehaviour;
         }
 
         // TODO: somehow remove redundancy between nonasync and async
@@ -133,6 +160,13 @@ namespace FluentPolicy
                     return exceptionBehaviour.Call(ex);
                 }
             }
+        }
+
+        private PredicatedBehaviour<Exception, TReturn> GetExceptionBehaviour(Exception ex, Func<PredicatedBehaviour<Exception, TReturn>, bool> predicate)
+        {
+            var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
+            if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
+            return exceptionBehaviour;
         }
 
         private void LogReturnValue(TReturn result)
@@ -346,6 +380,9 @@ namespace FluentPolicy
 
             return this;
         }
+
+        public event EventHandler<Exception> ExceptionThrown;
+        public event EventHandler<TReturn> ReturnValueObtained;
     }
 
     internal class RepeatHelper
