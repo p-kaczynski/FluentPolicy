@@ -41,7 +41,6 @@
   <ItemGroup>
     <Compile Include="Call.cs" />
     <Compile Include="FailureLimitExceededException.cs" />
-    <Compile Include="ILoggingExpression.cs" />
     <Compile Include="IPolicyBaseState.cs" />
     <Compile Include="IPolicyConditionSelector.cs" />
     <Compile Include="IPolicyConfigExpression.cs" />
@@ -50,6 +49,8 @@
     <Compile Include="IPolicyRepeatConfigExpressionContinuation.cs" />
     <Compile Include="IPolicyReturnValueConfigExpression.cs" />
     <Compile Include="AsyncPolicyException.cs" />
+    <Compile Include="Modules\BaseModule.cs" />
+    <Compile Include="Modules\Logging\LambdaLogger.cs" />
     <Compile Include="NoMatchingPolicyException.cs" />
     <Compile Include="PolicyAttachmentHelper.cs" />
     <Compile Include="PolicyBuilder.cs" />

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace FluentPolicy
 {
     public class PolicyBuilder<TReturn> : IPolicyBaseState<TReturn>, IPolicyConditionSelector<TReturn>,
-        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>, ILoggingExpression<TReturn>, IPolicyEvents<TReturn>
+        IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>, IPolicyEvents<TReturn>
     {
         private readonly Func<TReturn> _func;
         private readonly Func<Task<TReturn>> _funcAsync;
@@ -26,10 +26,6 @@ namespace FluentPolicy
 
         private readonly RepeatHelper _repeatHelper = new RepeatHelper();
 
-        // Logging
-        private Action<Exception> _exceptionLogAction;
-        private Action<TReturn> _returnValueLogAction;
-
         public PolicyBuilder(Func<TReturn> func)
         {
             _func = func;
@@ -44,11 +40,6 @@ namespace FluentPolicy
                     throw new AsyncPolicyException(
                         "This policy was created from an async function, and must be executed using ExecuteAsync");
                 };
-        }
-
-        ILoggingExpression<TReturn> IPolicyBaseState<TReturn>.Log()
-        {
-            return this;
         }
 
         public IPolicyBaseState<TReturn> AddModule(IPolicyModule module)
@@ -83,9 +74,6 @@ namespace FluentPolicy
                         if (ExceptionThrown != null)
                             ExceptionThrown(this, ex);
 
-                        // TODO: Move to module?
-                        LogException(ex);
-
                         // Find behaviour
                         var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
 
@@ -95,9 +83,6 @@ namespace FluentPolicy
                     // Result obtained!
                     if (ReturnValueObtained != null)
                         ReturnValueObtained(this, result);
-
-                    // TODO: move to module?
-                    LogReturnValue(result);
                     
                     // Call modules
                     foreach (var module in _modules)
@@ -139,11 +124,9 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
-                        LogException(ex);
                         var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
                         return exceptionBehaviour.Call(ex);
                     }
-                    LogReturnValue(result);
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
                     return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
@@ -167,18 +150,6 @@ namespace FluentPolicy
             var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
             if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
             return exceptionBehaviour;
-        }
-
-        private void LogReturnValue(TReturn result)
-        {
-            if (_returnValueLogAction == null) return;
-            _returnValueLogAction(result);
-        }
-
-        private void LogException(Exception exception)
-        {
-            if (_exceptionLogAction == null) return;
-            _exceptionLogAction(exception);
         }
 
         IPolicyConditionSelector<TReturn> IPolicyBaseState<TReturn>.For()
@@ -364,20 +335,6 @@ namespace FluentPolicy
             _lastCreatedBehaviour = behaviour;
             _exceptionBehaviourStack.Push(behaviour); 
             
-            return this;
-        }
-
-        IPolicyBaseState<TReturn> ILoggingExpression<TReturn>.Exceptions(Action<Exception> exceptionLogAction)
-        {
-            _exceptionLogAction = exceptionLogAction;
-
-            return this;
-        }
-
-        IPolicyBaseState<TReturn> ILoggingExpression<TReturn>.ReturnValues(Action<TReturn> returnValueLogAction)
-        {
-            _returnValueLogAction = returnValueLogAction;
-
             return this;
         }
 
