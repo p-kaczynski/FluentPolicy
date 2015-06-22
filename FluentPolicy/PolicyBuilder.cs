@@ -117,6 +117,9 @@ namespace FluentPolicy
             {
                 try
                 {
+                    foreach (var module in _modules)
+                        module.BeforeCall();
+
                     TReturn result;
                     try
                     {
@@ -124,10 +127,27 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
+                        if (ExceptionThrown != null)
+                            ExceptionThrown(this, ex);
+
+                        // Find behaviour
                         var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+
+                        // apply
                         return exceptionBehaviour.Call(ex);
                     }
+                    // Result obtained!
+                    if (ReturnValueObtained != null)
+                        ReturnValueObtained(this, result);
+
+                    // Call modules
+                    foreach (var module in _modules)
+                        module.AfterCall();
+
+                    // Find behaviour
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+
+                    // If behaviour found, apply, then return result
                     return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
