@@ -6,11 +6,11 @@
         {
         }
 
-        public virtual void BeforeCall()
+        public virtual void BeforeCall(PolicyBuilder policy)
         {
         }
 
-        public virtual void AfterCall()
+        public virtual void AfterCall(PolicyBuilder policy)
         {
         }
     }

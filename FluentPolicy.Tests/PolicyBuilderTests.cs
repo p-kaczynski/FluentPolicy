@@ -51,8 +51,6 @@ namespace FluentPolicy.Tests
         [Fact]
         public void ReturnValueExceptionThrowing()
         {
-            const string testString = "fnord";
-
             Assert.Throws<Exception>(() => As.Func(TestFunction).WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Throw(s => new Exception(s))
                 .Execute()
@@ -129,9 +127,9 @@ namespace FluentPolicy.Tests
         }
 
         [Fact]
-        public void NotDefinedExceptionThrowException()
+        public void NotDefinedExceptionRethrowException()
         {
-            Assert.Throws<NoMatchingPolicyException>(() => As.Func(TestFunctionException).WithPolicy()
+            Assert.Throws<TestException>(() => As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .Execute()
@@ -300,47 +298,7 @@ namespace FluentPolicy.Tests
             throw ReusableException;
         }
 
-        // --- test exceptions to make sure actual exceptions from framework doesn't get picked up by asserts ---
-
-        class TestException : Exception
-        {
-            public TestException()
-            {
-            }
-
-            public TestException(string message)
-                : base(message)
-            {
-            }
-        }
-
-        class OtherTestException : Exception
-        {
-            public OtherTestException()
-            {
-            }
-
-            public OtherTestException(string message)
-                : base(message)
-            {
-            }
-
-            public OtherTestException(string message, Exception innerException) : base(message, innerException)
-            {
-            }
-        }
-
-        class DifferentException : Exception
-        {
-            public DifferentException()
-            {
-            }
-
-            public DifferentException(string message)
-                : base(message)
-            {
-            }
-        }
+        
     }
     // --- interface for repeating testing ---
 

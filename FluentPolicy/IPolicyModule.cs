@@ -6,13 +6,20 @@ namespace FluentPolicy
     {
         void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource);
 
-        void BeforeCall();
-        void AfterCall();
+        void BeforeCall(PolicyBuilder policy);
+        void AfterCall(PolicyBuilder policy);
     }
 
     public interface IPolicyEvents<TReturn>
     {
-        event EventHandler<Exception> ExceptionThrown;
+        /// <summary>
+        /// Event fired when exception is thrown from the underlying expression. The object passed is the exception, and the sender is behaviour that will handle it.
+        /// </summary>
+        event EventHandler<ExceptionThrownEventArgs> ExceptionThrown;
+
+        /// <summary>
+        /// Event fired when exception is thrown from the underlying expression. The object passed is the exception, and the sender is behaviour that will handle it.
+        /// </summary>
         event EventHandler<TReturn> ReturnValueObtained;
     }
 }

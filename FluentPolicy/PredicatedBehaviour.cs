@@ -6,18 +6,17 @@ namespace FluentPolicy
 {
     internal abstract class PredicatedBehaviour<TReturn>
     {
+        public Guid Id { get; private set; }
         public abstract void SetSimpleBehaviour(Func<TReturn> factory);
+
+        protected PredicatedBehaviour()
+        {
+            Id = Guid.NewGuid();
+        } 
     }
 
     internal class PredicatedBehaviour<TPredicate, TReturn> : PredicatedBehaviour<TReturn>
     {
-        public Guid Id { get; private set; }
-
-        public PredicatedBehaviour()
-        {
-            Id = Guid.NewGuid();
-        } 
-
         private readonly List<Func<TPredicate, bool>> _predicates = new List<Func<TPredicate, bool>>();
 
         private Func<TPredicate, Guid, TReturn> _behaviour;

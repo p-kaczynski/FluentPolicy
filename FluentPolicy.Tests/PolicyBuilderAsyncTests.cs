@@ -149,9 +149,9 @@ namespace FluentPolicy.Tests
         }
 
         [Fact]
-        public async Task NotDefinedExceptionThrowException()
+        public async Task NotDefinedExceptionRethrowException()
         {
-            await Assert.ThrowsAsync<NoMatchingPolicyException>(() => As.Func(TestFunctionException).WithAsyncPolicy()
+            await Assert.ThrowsAsync<TestException>(() => As.Func(TestFunctionException).WithAsyncPolicy()
                 .For().Exception<OtherTestException>().Rethrow()
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .ExecuteAsync()

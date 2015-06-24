@@ -13,7 +13,7 @@ namespace FluentPolicy.Modules.Logging
 
         public override void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource)
         {
-            eventsSource.ExceptionThrown += (sender, exception) => _exceptionLogAction(exception);
+            eventsSource.ExceptionThrown += (sender, exceptionArgs) => _exceptionLogAction(exceptionArgs.Exception);
         }
     }
 

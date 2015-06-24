@@ -67,9 +67,12 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="Modules\CircuitBreaker\CircuitBreakerTests.cs" />
+    <Compile Include="Modules\Logging\LoggingTests.cs" />
     <Compile Include="PolicyBuilderAsyncTests.cs" />
     <Compile Include="PolicyBuilderTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestHelpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -80,6 +83,7 @@
       <Name>FluentPolicy</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

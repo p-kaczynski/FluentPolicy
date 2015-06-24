@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Call.cs" />
+    <Compile Include="ExceptionThrownEventArgs.cs" />
     <Compile Include="FailureLimitExceededException.cs" />
     <Compile Include="IPolicyBaseState.cs" />
     <Compile Include="IPolicyConditionSelector.cs" />
@@ -50,6 +51,11 @@
     <Compile Include="IPolicyReturnValueConfigExpression.cs" />
     <Compile Include="AsyncPolicyException.cs" />
     <Compile Include="Modules\BaseModule.cs" />
+    <Compile Include="Modules\CircuitBreaker\CircuitBreaker.cs" />
+    <Compile Include="Modules\CircuitBreaker\CircuitBreakerException.cs" />
+    <Compile Include="Modules\CircuitBreaker\CircuitBreakerExtensions.cs" />
+    <Compile Include="Modules\CircuitBreaker\CircuitBreakerInMemoryPersistence.cs" />
+    <Compile Include="Modules\CircuitBreaker\ICircuitBreakerPersistence.cs" />
     <Compile Include="Modules\Logging\LambdaLogger.cs" />
     <Compile Include="NoMatchingPolicyException.cs" />
     <Compile Include="PolicyAttachmentHelper.cs" />

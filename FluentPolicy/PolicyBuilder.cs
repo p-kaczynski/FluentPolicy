@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -8,7 +9,17 @@ using System.Threading.Tasks;
 
 namespace FluentPolicy
 {
-    public class PolicyBuilder<TReturn> : IPolicyBaseState<TReturn>, IPolicyConditionSelector<TReturn>,
+    public abstract class PolicyBuilder
+    {
+        public Guid Id { get; private set; }
+
+        protected PolicyBuilder()
+        {
+            Id = Guid.NewGuid();
+        }
+    }
+
+    public class PolicyBuilder<TReturn> : PolicyBuilder, IPolicyBaseState<TReturn>, IPolicyConditionSelector<TReturn>,
         IPolicyExceptionConfigExpression<TReturn>, IPolicyReturnValueConfigExpression<TReturn>, IPolicyRepeatConfigExpressionContinuation<TReturn>, IPolicyEvents<TReturn>
     {
         private readonly Func<TReturn> _func;
@@ -25,6 +36,8 @@ namespace FluentPolicy
         private PredicatedBehaviour<TReturn> _lastCreatedBehaviour;
 
         private readonly RepeatHelper _repeatHelper = new RepeatHelper();
+
+
 
         public PolicyBuilder(Func<TReturn> func)
         {
@@ -58,7 +71,7 @@ namespace FluentPolicy
                 try
                 {
                     foreach(var module in _modules)
-                        module.BeforeCall();
+                        module.BeforeCall(this);
 
                     TReturn result;
                     try
@@ -71,40 +84,32 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
-                        if (ExceptionThrown != null)
-                            ExceptionThrown(this, ex);
-
                         // Find behaviour
-                        var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+                        var exceptionBehaviour = GetExceptionBehaviour(b => b.Test(ex));
+
+                        if (ExceptionThrown != null)
+                            ExceptionThrown(this,
+                                new ExceptionThrownEventArgs
+                                {
+                                    Exception = ex,
+                                    HandlerBehaviourGuid =
+                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?) null
+                                });
+
+                        if (exceptionBehaviour == null) throw;
 
                         // apply
                         return exceptionBehaviour.Call(ex);
                     }
-                    // Result obtained!
-                    if (ReturnValueObtained != null)
-                        ReturnValueObtained(this, result);
-                    
-                    // Call modules
-                    foreach (var module in _modules)
-                        module.AfterCall();
-
-                    // Find behaviour
-                    var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
-
-                    // If behaviour found, apply, then return result
-                    return resultBehaviour == null ? result : resultBehaviour.Call(result);
+                    return PostCall(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
-                    var sleepTime = waitAndRetry.WaitTime;
-                    if (sleepTime.TotalSeconds > 0)
-                        Thread.Sleep(sleepTime);
+                    HandleWaitAndRetry(waitAndRetry);
                 }
                 catch (FailureLimitExceededException flee)
                 {
-                    var ex = flee.InnerException;
-                    var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex) && b.Id != flee.FailedBehaviourId);
-                    return exceptionBehaviour.Call(ex);
+                    return HandleFailureLimitExceeded(flee);
                 }
             }
         }
@@ -118,7 +123,7 @@ namespace FluentPolicy
                 try
                 {
                     foreach (var module in _modules)
-                        module.BeforeCall();
+                        module.BeforeCall(this);
 
                     TReturn result;
                     try
@@ -127,49 +132,71 @@ namespace FluentPolicy
                     }
                     catch (Exception ex)
                     {
-                        if (ExceptionThrown != null)
-                            ExceptionThrown(this, ex);
-
                         // Find behaviour
-                        var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex));
+                        var exceptionBehaviour = GetExceptionBehaviour(b => b.Test(ex));
+
+                        if (ExceptionThrown != null)
+                            ExceptionThrown(this,
+                                new ExceptionThrownEventArgs
+                                {
+                                    Exception = ex,
+                                    HandlerBehaviourGuid =
+                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?)null
+                                });
+
+                        if (exceptionBehaviour == null) throw;
 
                         // apply
                         return exceptionBehaviour.Call(ex);
                     }
-                    // Result obtained!
-                    if (ReturnValueObtained != null)
-                        ReturnValueObtained(this, result);
-
-                    // Call modules
-                    foreach (var module in _modules)
-                        module.AfterCall();
-
-                    // Find behaviour
-                    var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
-
-                    // If behaviour found, apply, then return result
-                    return resultBehaviour == null ? result : resultBehaviour.Call(result);
+                    return PostCall(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
-                    var sleepTime = waitAndRetry.WaitTime;
-                    if (sleepTime.TotalSeconds > 0)
-                        Thread.Sleep(sleepTime);
+                    HandleWaitAndRetry(waitAndRetry);
                 }
                 catch (FailureLimitExceededException flee)
                 {
-                    var ex = flee.InnerException;
-                    var exceptionBehaviour = GetExceptionBehaviour(ex, b => b.Test(ex) && b.Id != flee.FailedBehaviourId);
-                    return exceptionBehaviour.Call(ex);
+                    return HandleFailureLimitExceeded(flee);
                 }
             }
         }
 
-        private PredicatedBehaviour<Exception, TReturn> GetExceptionBehaviour(Exception ex, Func<PredicatedBehaviour<Exception, TReturn>, bool> predicate)
+        private TReturn PostCall(TReturn result)
         {
-            var exceptionBehaviour = _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
-            if (exceptionBehaviour == null) throw new NoMatchingPolicyException(ex);
-            return exceptionBehaviour;
+            // Find behaviour
+            var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+
+            // Result obtained!
+            if (ReturnValueObtained != null)
+                ReturnValueObtained(resultBehaviour, result);
+
+            // Call modules
+            foreach (var module in _modules)
+                module.AfterCall(this);
+
+            // If behaviour found, apply, then return result
+            return resultBehaviour == null ? result : resultBehaviour.Call(result);
+        }
+
+        private void HandleWaitAndRetry(WaitAndRetry waitAndRetry)
+        {
+            var sleepTime = waitAndRetry.WaitTime;
+            if (sleepTime.TotalSeconds > 0)
+                Thread.Sleep(sleepTime);
+        }
+
+
+        private TReturn HandleFailureLimitExceeded(FailureLimitExceededException flee)
+        {
+            var ex = flee.InnerException;
+            var exceptionBehaviour = GetExceptionBehaviour(b => b.Test(ex) && b.Id != flee.FailedBehaviourId);
+            return exceptionBehaviour.Call(ex);
+        }
+
+        private PredicatedBehaviour<Exception, TReturn> GetExceptionBehaviour(Func<PredicatedBehaviour<Exception, TReturn>, bool> predicate)
+        {
+            return _exceptionBehaviourStack.ToArray().Reverse().FirstOrDefault(predicate);
         }
 
         IPolicyConditionSelector<TReturn> IPolicyBaseState<TReturn>.For()
@@ -223,6 +250,12 @@ namespace FluentPolicy
             };
 
             return this;
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        Guid IPolicyConfigExpression<TReturn>.GetGuid()
+        {
+            return _lastCreatedBehaviour != null ? _lastCreatedBehaviour.Id : Guid.Empty;
         }
 
         IPolicyBaseState<TReturn> IPolicyConfigExpression<TReturn>.Return(TReturn returnObject)
@@ -358,7 +391,14 @@ namespace FluentPolicy
             return this;
         }
 
-        public event EventHandler<Exception> ExceptionThrown;
+        /// <summary>
+        /// Event fired when exception is thrown from the underlying expression. The object passed is the exception, and the sender is behaviour that will handle it.
+        /// </summary>
+        public event EventHandler<ExceptionThrownEventArgs> ExceptionThrown;
+
+        /// <summary>
+        /// Event fired when exception is thrown from the underlying expression. The object passed is the exception, and the sender is behaviour that will handle it.
+        /// </summary>
         public event EventHandler<TReturn> ReturnValueObtained;
     }
 
