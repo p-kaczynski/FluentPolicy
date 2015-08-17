@@ -9,5 +9,7 @@ namespace FluentPolicy
         Guid GetGuid();
 
         IPolicyBaseState<TReturn> Return(TReturn returnObject);
+        
+        IPolicyBaseState<TReturn> ReturnDefault();
     }
 }

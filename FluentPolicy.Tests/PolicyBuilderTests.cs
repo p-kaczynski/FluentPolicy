@@ -49,6 +49,14 @@ namespace FluentPolicy.Tests
         }
 
         [Fact]
+        public void ReturnValueReturnDefault()
+        {
+            As.Func(TestFunction).WithPolicy()
+                .For().ReturnValue(s => s.Equals(SampleReturnString)).ReturnDefault()
+                .Execute().ShouldBeNull();
+        }
+
+        [Fact]
         public void ReturnValueExceptionThrowing()
         {
             Assert.Throws<Exception>(() => As.Func(TestFunction).WithPolicy()
@@ -77,6 +85,24 @@ namespace FluentPolicy.Tests
                 .Execute().ShouldEqual(otherReturnValue);
         }
 
+        [Fact]
+        public void ForExceptionReturnDefault()
+        {
+            As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<TestException>().ReturnDefault()
+                .For().Exception<ArgumentNullException>().Rethrow()
+                .Execute().ShouldBeNull();
+        }
+
+        [Fact]
+        public void ForOrExceptionReturnDefault()
+        {
+            As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<OtherTestException>().Or<TestException>().ReturnDefault()
+                .For().Exception<ArgumentNullException>().Rethrow()
+                .Execute().ShouldBeNull();
+        }
+
 
         ///<remarks> This also tests for correct order of evaluation</remarks>
         [Fact]
@@ -85,8 +111,8 @@ namespace FluentPolicy.Tests
             const string otherReturnValue = "discordia";
             As.Func(TestFunctionExceptionWithMessage).WithPolicy()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
-                .For().Exception<TestException>(e=>e.Message.Equals(SampleReturnString)).Rethrow()
-                .For().Exception<TestException>().Throw(e=>new Exception("This should not get thrown"))
+                .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
+                .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
                 .Execute().ShouldEqual(otherReturnValue);
         }
 
@@ -99,6 +125,27 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
                 .Execute().ShouldEqual(otherReturnValue);
+        }
+
+        ///<remarks> This also tests for correct order of evaluation</remarks>
+        [Fact]
+        public void ForPredicatedExceptionReturnDefault()
+        {
+            As.Func(TestFunctionExceptionWithMessage).WithPolicy()
+                .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).ReturnDefault()
+                .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
+                .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
+                .Execute().ShouldBeNull();
+        }
+
+        [Fact]
+        public void ForOrPredicatedExceptionReturDefault()
+        {
+            As.Func(TestFunctionExceptionWithMessage).WithPolicy()
+                .For().Exception<OtherTestException>().Or<TestException>(e => e.Message.Equals(SampleExceptionMessage)).ReturnDefault()
+                .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
+                .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
+                .Execute().ShouldBeNull();
         }
 
         [Fact]
@@ -172,6 +219,19 @@ namespace FluentPolicy.Tests
                 .For().AllOtherExceptions().Return(otherMessage)
                 .Execute()
                 .ShouldEqual(otherMessage);
+        }
+
+        [Fact]
+        public void ForAllOtherExceptionsReturnsDefault()
+        {
+            const string otherMessage = "Iä! Iä! Cthulhu Fhtagn!";
+
+            As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<OtherTestException>().Rethrow()
+                .For().Exception<DifferentException>().Return(string.Empty)
+                .For().AllOtherExceptions().ReturnDefault()
+                .Execute()
+                .ShouldBeNull();
         }
 
         // Retries

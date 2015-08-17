@@ -265,6 +265,13 @@ namespace FluentPolicy
             return this;
         }
 
+        public IPolicyBaseState<TReturn> ReturnDefault()
+        {
+            _lastCreatedBehaviour.SetSimpleBehaviour(()=>default(TReturn));
+
+            return this;
+        }
+
         IPolicyBaseState<TReturn> IPolicyExceptionConfigExpression<TReturn>.Return(Func<Exception, TReturn> factory)
         {
             _exceptionBehaviourStack.Peek().Behaviour = factory;
