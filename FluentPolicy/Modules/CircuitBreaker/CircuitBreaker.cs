@@ -85,8 +85,10 @@ namespace FluentPolicy.Modules.CircuitBreaker
         protected virtual void Check(Guid policyId, Guid behaviourGuid)
         {
             var errorsInTimeSpan = Persistence.GetExceptionCount(policyId, behaviourGuid, ExceptionsExpireAfter);
-            if(errorsInTimeSpan >= Sensitivity)
-                Persistence.SetPolicyAsTripped(policyId);
+            if (errorsInTimeSpan < Sensitivity) return;
+
+            Persistence.SetPolicyAsTripped(policyId);
+            throw ExceptionFactory(new CircuitBreakerException(CooldownTime));
         }
 
         public override void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource)

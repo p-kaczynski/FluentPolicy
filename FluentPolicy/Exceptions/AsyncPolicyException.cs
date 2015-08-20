@@ -1,6 +1,6 @@
 using System;
 
-namespace FluentPolicy
+namespace FluentPolicy.Exceptions
 {
     public sealed class AsyncPolicyException : Exception
     {

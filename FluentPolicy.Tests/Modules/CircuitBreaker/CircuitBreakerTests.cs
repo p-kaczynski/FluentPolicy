@@ -58,7 +58,7 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                 .For().AllOtherExceptions().Rethrow()
                 .AddModule(breaker);
 
-            for (var i = 0; i < 4; ++i)
+            for (var i = 0; i < 3; ++i)
             {
                 // 4 exceptions
                 policy
@@ -81,7 +81,7 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                 .For().AllOtherExceptions().Rethrow()
                 .AddModule(breaker);
 
-            for (var i = 0; i < 4; ++i)
+            for (var i = 0; i < 3; ++i)
             {
                 // 4 exceptions
                 policy
@@ -89,8 +89,9 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                     .ShouldEqual(SampleReturnString);
             }
             new Action(() => policy.Execute()).ShouldThrow<CircuitBreakerException>();
+            new Action(() => policy.Execute(TestFunction)).ShouldThrow<CircuitBreakerException>();
             Thread.Sleep(breaker.CooldownTime);
-            policy.Execute().ShouldEqual(SampleReturnString);
+            policy.Execute(TestFunction).ShouldEqual(SampleReturnString);
         }
 
         // Tests for built in in-memory persistence

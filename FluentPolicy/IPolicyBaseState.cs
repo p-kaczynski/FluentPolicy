@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace FluentPolicy
@@ -6,7 +7,11 @@ namespace FluentPolicy
     {
         IPolicyConditionSelector<TReturn> For();
         IPolicyBaseState<TReturn> AddModule(IPolicyModule module);
+        
         TReturn Execute();
         Task<TReturn> ExecuteAsync();
+
+        TReturn Execute(Func<TReturn> implementation);
+        Task<TReturn> ExecuteAsync(Func<Task<TReturn>> implementation);
     }
 }

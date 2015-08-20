@@ -1,8 +1,8 @@
 using System;
 
-namespace FluentPolicy
+namespace FluentPolicy.Exceptions
 {
-    public sealed class NoMatchingPolicyException : Exception
+    public sealed class NoMatchingPolicyException : FluentPolicyPublicExceptionBase
     {
         internal NoMatchingPolicyException(Exception innerException) : base(string.Empty, innerException)
         {

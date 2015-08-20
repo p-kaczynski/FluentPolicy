@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentPolicy.Exceptions;
 
 namespace FluentPolicy
 {
@@ -37,7 +38,15 @@ namespace FluentPolicy
 
         private readonly RepeatHelper _repeatHelper = new RepeatHelper();
 
+        public PolicyBuilder()
+        {
+            
+        }
 
+        public IPolicyBaseState<TReturn> Setup()
+        {
+            return this;
+        }
 
         public PolicyBuilder(Func<TReturn> func)
         {
@@ -65,7 +74,14 @@ namespace FluentPolicy
 
         TReturn IPolicyBaseState<TReturn>.Execute()
         {
-            _repeatHelper.Reset();
+            if(_func == null)
+                throw new ImplementationNotSetException();
+
+            return ((IPolicyBaseState<TReturn>) this).Execute(_func);
+        }
+
+        TReturn IPolicyBaseState<TReturn>.Execute(Func<TReturn> implementation ){
+        _repeatHelper.Reset();
             while (true)
             {
                 try
@@ -76,7 +92,7 @@ namespace FluentPolicy
                     TReturn result;
                     try
                     {
-                        result = _func();
+                        result = implementation();
                     }
                     catch (AsyncPolicyException)
                     {
@@ -115,7 +131,15 @@ namespace FluentPolicy
         }
 
         // TODO: somehow remove redundancy between nonasync and async
-        async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync()
+        Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync()
+        {
+            if(_funcAsync == null)
+                throw new ImplementationNotSetException();
+
+            return ((IPolicyBaseState<TReturn>) this).ExecuteAsync(_funcAsync);
+        }
+
+        async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync(Func<Task<TReturn>> implementation )
         {
             _repeatHelper.Reset();
             while (true)
@@ -128,7 +152,7 @@ namespace FluentPolicy
                     TReturn result;
                     try
                     {
-                        result = await _funcAsync();
+                        result = await implementation();
                     }
                     catch (Exception ex)
                     {

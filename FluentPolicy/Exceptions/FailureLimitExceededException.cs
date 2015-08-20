@@ -1,6 +1,6 @@
 using System;
 
-namespace FluentPolicy
+namespace FluentPolicy.Exceptions
 {
     internal class FailureLimitExceededException : Exception
     {

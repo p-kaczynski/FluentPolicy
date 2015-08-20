@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using FluentPolicy.Exceptions;
 using Should;
 using Xunit;
 
