@@ -117,7 +117,20 @@ namespace FluentPolicy
                         // apply
                         return exceptionBehaviour.Call(ex);
                     }
-                    return PostCall(result);
+
+                    // Find behaviour
+                    var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+
+                    // Result obtained!
+                    if (ReturnValueObtained != null)
+                        ReturnValueObtained(resultBehaviour, result);
+
+                    // Call modules
+                    foreach (var module in _modules)
+                        module.AfterCall(this);
+
+                    // If behaviour found, apply, then return result
+                    return resultBehaviour == null ? result : resultBehaviour.Call(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
@@ -139,7 +152,7 @@ namespace FluentPolicy
             return ((IPolicyBaseState<TReturn>) this).ExecuteAsync(_funcAsync);
         }
 
-        async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync(Func<Task<TReturn>> implementation )
+        async Task<TReturn> IPolicyBaseState<TReturn>.ExecuteAsync(Func<Task<TReturn>> implementation)
         {
             _repeatHelper.Reset();
             while (true)
@@ -149,7 +162,9 @@ namespace FluentPolicy
                     foreach (var module in _modules)
                         module.BeforeCall(this);
 
-                    TReturn result;
+                    TReturn result = default(TReturn);
+
+                    Task<TReturn> exceptionReturn = null;
                     try
                     {
                         result = await implementation();
@@ -165,15 +180,32 @@ namespace FluentPolicy
                                 {
                                     Exception = ex,
                                     HandlerBehaviourGuid =
-                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?)null
+                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?) null
                                 });
 
                         if (exceptionBehaviour == null) throw;
 
                         // apply
-                        return exceptionBehaviour.Call(ex);
+                        exceptionReturn = exceptionBehaviour.CallAsync(ex);
                     }
-                    return PostCall(result);
+
+                    // This is in outer scope do to inability to await in catch clause
+                    if (exceptionReturn != null)
+                        return await exceptionReturn;
+
+                    // Find behaviour
+                    var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
+
+                    // Result obtained!
+                    if (ReturnValueObtained != null)
+                        ReturnValueObtained(resultBehaviour, result);
+
+                    // Call modules
+                    foreach (var module in _modules)
+                        module.AfterCall(this);
+
+                    // If behaviour found, apply, then return result
+                    return resultBehaviour == null ? result : await resultBehaviour.CallAsync(result);
                 }
                 catch (WaitAndRetry waitAndRetry)
                 {
@@ -184,23 +216,6 @@ namespace FluentPolicy
                     return HandleFailureLimitExceeded(flee);
                 }
             }
-        }
-
-        private TReturn PostCall(TReturn result)
-        {
-            // Find behaviour
-            var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
-
-            // Result obtained!
-            if (ReturnValueObtained != null)
-                ReturnValueObtained(resultBehaviour, result);
-
-            // Call modules
-            foreach (var module in _modules)
-                module.AfterCall(this);
-
-            // If behaviour found, apply, then return result
-            return resultBehaviour == null ? result : resultBehaviour.Call(result);
         }
 
         private void HandleWaitAndRetry(WaitAndRetry waitAndRetry)
@@ -285,6 +300,27 @@ namespace FluentPolicy
         IPolicyBaseState<TReturn> IPolicyConfigExpression<TReturn>.Return(TReturn returnObject)
         {
             _lastCreatedBehaviour.SetSimpleBehaviour(() => returnObject);
+
+            return this;
+        }
+
+        public IPolicyBaseState<TReturn> Return(Func<TReturn> returnObjectFactory)
+        {
+            _lastCreatedBehaviour.SetSimpleBehaviour(returnObjectFactory);
+
+            return this;
+        }
+
+        public IPolicyBaseState<TReturn> ReturnAsync(Task<TReturn> returnObject)
+        {
+            _lastCreatedBehaviour.SetSimpleBehaviourAsync(()=>returnObject);
+
+            return this;
+        }
+
+        public IPolicyBaseState<TReturn> ReturnAsync(Func<Task<TReturn>> returnObjectFactory)
+        {
+            _lastCreatedBehaviour.SetSimpleBehaviourAsync(returnObjectFactory);
 
             return this;
         }

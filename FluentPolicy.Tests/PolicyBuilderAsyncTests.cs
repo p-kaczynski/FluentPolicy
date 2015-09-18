@@ -199,6 +199,26 @@ namespace FluentPolicy.Tests
                 result.ShouldEqual(otherMessage);
         }
 
+        [Fact]
+        public async Task ReturnsAsync()
+        {
+            var result = await As.Func(TestFunctionException).WithAsyncPolicy()
+                .For().Exception<TestException>().ReturnAsync(TestFunction)
+                .ExecuteAsync();
+
+            result.ShouldEqual(SampleReturnString);
+        }
+
+        [Fact]
+        public async Task ReturnsAsyncFromTask()
+        {
+            var result = await As.Func(TestFunctionException).WithAsyncPolicy()
+                .For().Exception<TestException>().ReturnAsync(TestFunction())
+                .ExecuteAsync();
+
+            result.ShouldEqual(SampleReturnString);
+        }
+
 
         // --- methods to call ---
 

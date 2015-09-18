@@ -76,6 +76,15 @@ namespace FluentPolicy.Tests
         }
 
         [Fact]
+        public void ForExceptionReturnValueFromFactory()
+        {
+            As.Func(TestFunctionException).WithPolicy()
+                .For().Exception<TestException>().Return(TestFunction)
+                .For().Exception<ArgumentNullException>().Rethrow()
+                .Execute().ShouldEqual(SampleReturnString);
+        }
+
+        [Fact]
         public void ForOrExceptionReturnValue()
         {
             const string otherReturnValue = "discordia";

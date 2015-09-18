@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FluentPolicy
 {
@@ -8,6 +9,7 @@ namespace FluentPolicy
     {
         public Guid Id { get; private set; }
         public abstract void SetSimpleBehaviour(Func<TReturn> factory);
+        public abstract void SetSimpleBehaviourAsync(Func<Task<TReturn>> factory);
 
         protected PredicatedBehaviour()
         {
@@ -20,10 +22,16 @@ namespace FluentPolicy
         private readonly List<Func<TPredicate, bool>> _predicates = new List<Func<TPredicate, bool>>();
 
         private Func<TPredicate, Guid, TReturn> _behaviour;
+        private Func<TPredicate, Guid, Task<TReturn>> _behaviourAsync;
 
         public Func<TPredicate, TReturn> Behaviour
         {
             set { _behaviour = (input, guid) => value(input); }
+        }
+
+        public Func<TPredicate, Task<TReturn>> BehaviourAsync
+        {
+            set { _behaviourAsync = (input, guid) => value(input); }
         }
 
         public void AddPredicate(Func<TPredicate, bool> predicate)
@@ -47,6 +55,11 @@ namespace FluentPolicy
             _behaviour = (predicate, guid) => factory();
         }
 
+        public override void SetSimpleBehaviourAsync(Func<Task<TReturn>> factory)
+        {
+            _behaviourAsync = (predicate, guid) => factory();
+        }
+
         public void SetGuidBehaviour(Func<TPredicate, Guid, TReturn> behaviour)
         {
             _behaviour = behaviour;
@@ -55,6 +68,13 @@ namespace FluentPolicy
         public TReturn Call(TPredicate input)
         {
             return _behaviour(input, Id);
+        }
+
+        public Task<TReturn> CallAsync(TPredicate input)
+        {
+            if (_behaviourAsync != null)
+                return _behaviourAsync(input, Id);
+            return Task.FromResult(_behaviour(input, Id));
         }
     }
 }
