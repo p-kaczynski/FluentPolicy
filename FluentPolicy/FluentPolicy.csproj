@@ -52,7 +52,9 @@
     <Compile Include="IPolicyRepeatConfigExpressionContinuation.cs" />
     <Compile Include="IPolicyReturnValueConfigExpression.cs" />
     <Compile Include="Exceptions\AsyncPolicyException.cs" />
+    <Compile Include="IPolicySuccessConfigExpression.cs" />
     <Compile Include="Modules\BaseModule.cs" />
+    <Compile Include="Modules\Callback\SuccessCallback.cs" />
     <Compile Include="Modules\CircuitBreaker\CircuitBreaker.cs" />
     <Compile Include="Modules\CircuitBreaker\CircuitBreakerException.cs" />
     <Compile Include="Modules\CircuitBreaker\CircuitBreakerExtensions.cs" />

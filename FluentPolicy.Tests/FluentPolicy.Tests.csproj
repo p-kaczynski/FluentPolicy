@@ -67,6 +67,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="Modules\Callback\SuccessCallbackTests.cs" />
     <Compile Include="Modules\CircuitBreaker\CircuitBreakerTests.cs" />
     <Compile Include="Modules\Logging\LoggingTests.cs" />
     <Compile Include="PolicyBuilderAsyncTests.cs" />
