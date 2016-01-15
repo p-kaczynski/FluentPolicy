@@ -6,11 +6,20 @@ using Timer = System.Timers.Timer;
 
 namespace FluentPolicy.Modules.CircuitBreaker
 {
+    /// <summary>
+    ///     A simple implementation of <see cref="ICircuitBreakerPersistence" /> using in-memory persistance
+    /// </summary>
     public class CircuitBreakerInMemoryPersistence : ICircuitBreakerPersistence, IDisposable
     {
         private const int DefaultCleanUpMilliseconds = 5*60*1000;
         private const int DefaultMaxRememberTimeMinutes = 60;
 
+        /// <summary>
+        ///     Gets or sets the maximum exception remember time.
+        /// </summary>
+        /// <value>
+        ///     The maximum remember time.
+        /// </value>
         public TimeSpan MaxRememberTime { get; set; }
 
         public int CleanUpMilliseconds
@@ -33,9 +42,15 @@ namespace FluentPolicy.Modules.CircuitBreaker
         private static int _cleanUpMilliseconds;
 
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
-        private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ConcurrentBag<DateTime>>> _storage = new ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ConcurrentBag<DateTime>>>();
+
+        private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ConcurrentBag<DateTime>>> _storage =
+            new ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ConcurrentBag<DateTime>>>();
+
         private readonly ConcurrentDictionary<Guid, DateTime> _trips = new ConcurrentDictionary<Guid, DateTime>();
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="CircuitBreakerInMemoryPersistence" /> class.
+        /// </summary>
         public CircuitBreakerInMemoryPersistence()
         {
             _selfCleanUpTimer.Elapsed += (sender, args) => CleanUp();
@@ -95,7 +110,6 @@ namespace FluentPolicy.Modules.CircuitBreaker
             try
             {
                 return _storage.GetOrAdd(policyId).GetOrAdd(behaviourId).Count(dt => dt > DateTime.Now - duringLast);
-
             }
             finally
             {
@@ -109,7 +123,8 @@ namespace FluentPolicy.Modules.CircuitBreaker
             try
             {
                 _storage.GetOrAdd(policyId)
-                .AddOrUpdate(behaviourId, new ConcurrentBag<DateTime>(), (guid, bag) => new ConcurrentBag<DateTime>());
+                    .AddOrUpdate(behaviourId, new ConcurrentBag<DateTime>(),
+                        (guid, bag) => new ConcurrentBag<DateTime>());
             }
             finally
             {
