@@ -27,6 +27,16 @@ namespace FluentPolicy.Modules.CircuitBreaker
         protected readonly List<Guid> TripForBehaviours = new List<Guid>();
 
         /// <summary>
+        /// Backing field for <see cref="LogAction"/>
+        /// </summary>
+        private Action<string> _logAction;
+
+        /// <summary>
+        /// Switched to true if non-null is set to <see cref="LogAction"/>
+        /// </summary>
+        private bool _loggingEnabled;
+
+        /// <summary>
         ///     If false, only exceptions caught by behaviours that explicitly registered themselves with this circuit breaker will
         ///     trigger it.
         ///     Default: false
@@ -40,6 +50,12 @@ namespace FluentPolicy.Modules.CircuitBreaker
         public bool DifferentiateBetweenBehaviours { get; set; }
 
         /// <summary>
+        ///     If true, will reset behaviour exception count.
+        ///     Default: false
+        /// </summary>
+        public bool ResetCountAfterTrip { get; set; }
+
+        /// <summary>
         ///     How long to remember exceptions
         ///     Default: 24 hours
         /// </summary>
@@ -50,6 +66,21 @@ namespace FluentPolicy.Modules.CircuitBreaker
         ///     Default: 1 minute
         /// </summary>
         public TimeSpan CooldownTime { get; set; }
+
+        /// <summary>
+        ///     If provided, will be used to provide verbose logging
+        ///     Default: dev>null
+        /// </summary>
+        public Action<string> LogAction
+        {
+            get { return _logAction; }
+            set
+            {
+                _logAction = value;
+                if (_logAction != null)
+                    _loggingEnabled = true;
+            }
+        }
 
         /// <summary>
         ///     How many exceptions in the period of time (<see cref="ExceptionsExpireAfter" />) will trip the breaker
@@ -80,6 +111,9 @@ namespace FluentPolicy.Modules.CircuitBreaker
             CooldownTime = TimeSpan.FromMinutes(1);
             Sensitivity = 5;
             ExceptionFactory = DefaultExceptionFactory;
+
+            // this is for safety:
+            _logAction = _ => { }; // this is equivalent of > /dev/null
         }
 
         /// <summary>
@@ -93,6 +127,9 @@ namespace FluentPolicy.Modules.CircuitBreaker
         /// </exception>
         protected virtual void OnException(object policyObj, ExceptionThrownEventArgs args)
         {
+            if (_loggingEnabled)
+                LogAction(string.Format("OnException: Processing exception {0}",args.Exception));
+
             var guid = args.HandlerBehaviourGuid;
 
             if (!guid.HasValue) return;
@@ -106,9 +143,13 @@ namespace FluentPolicy.Modules.CircuitBreaker
             var lastTripTime = Persistence.GetPolicyLastTripTime(policy.Id);
             if (IsTripped(lastTripTime)) return;
 
-
+            
             var behaviourGuid = DifferentiateBetweenBehaviours ? guid.Value : Guid.Empty;
             Persistence.IncrementExceptionCount(policy.Id, behaviourGuid);
+
+            if (_loggingEnabled)
+                LogAction("The exception incremented exception count for behaviour.");
+
 
             Check(policy.Id, behaviourGuid);
         }
@@ -131,9 +172,16 @@ namespace FluentPolicy.Modules.CircuitBreaker
         protected virtual void Check(Guid policyId, Guid behaviourGuid)
         {
             var errorsInTimeSpan = Persistence.GetExceptionCount(policyId, behaviourGuid, ExceptionsExpireAfter);
+            if (_loggingEnabled)
+                LogAction(string.Format("Checking current exception level: {0}/{1}", errorsInTimeSpan, Sensitivity));
             if (errorsInTimeSpan < Sensitivity) return;
 
+            if (_loggingEnabled)
+                LogAction("Setting policy as tripped.");
             Persistence.SetPolicyAsTripped(policyId);
+
+            if(ResetCountAfterTrip)
+                Persistence.ResetExceptionCount(policyId,behaviourGuid);
             throw ExceptionFactory(new CircuitBreakerException(CooldownTime));
         }
 
