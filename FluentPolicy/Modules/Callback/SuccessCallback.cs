@@ -13,6 +13,7 @@ namespace FluentPolicy.Modules.Callback
 
         #region Overrides of BaseModule
 
+        /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         public override void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource)
         {
             eventsSource.ReturnValueObtained += (sender, @return) => _action();

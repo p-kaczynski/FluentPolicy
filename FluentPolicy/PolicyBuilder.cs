@@ -489,6 +489,8 @@ namespace FluentPolicy
                 retry => retry > waitTimes.Length ? waitTimes.Last() : waitTimes[retry - 1], callback);
         }
 
+        /// <exception cref="FailureLimitExceededException">Failure limit exceeded.</exception>
+        /// <exception cref="WaitAndRetry">Handled internally.</exception>
         public T Handle<T>(Guid behaviourId, Exception ex, int maximumRetries, Func<int, TimeSpan> getWaitTime, Action<Exception, int> callback)
         {
             var retry = _retryDictionary.AddOrUpdate(behaviourId, 1, (id, count) => count + 1);

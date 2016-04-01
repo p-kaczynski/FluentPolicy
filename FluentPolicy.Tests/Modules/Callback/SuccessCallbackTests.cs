@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using FluentPolicy.Modules.Callback;
-using FluentPolicy.Modules.Logging;
 using Should;
 using Xunit;
 

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace FluentPolicy.Exceptions
+﻿namespace FluentPolicy.Exceptions
 {
     public class ImplementationNotSetException : FluentPolicyPublicExceptionBase
     {

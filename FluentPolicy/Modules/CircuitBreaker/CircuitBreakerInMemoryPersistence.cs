@@ -54,6 +54,7 @@ namespace FluentPolicy.Modules.CircuitBreaker
         public CircuitBreakerInMemoryPersistence()
         {
             _selfCleanUpTimer.Elapsed += (sender, args) => CleanUp();
+            // ReSharper disable once ExceptionNotDocumented -- will not be thrown
             MaxRememberTime = TimeSpan.FromMinutes(DefaultMaxRememberTimeMinutes);
         }
 

@@ -11,6 +11,7 @@ namespace FluentPolicy.Modules.Logging
             _exceptionLogAction = exceptionLogAction;
         }
 
+        /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         public override void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource)
         {
             eventsSource.ExceptionThrown += (sender, exceptionArgs) => _exceptionLogAction(exceptionArgs.Exception);
@@ -26,6 +27,8 @@ namespace FluentPolicy.Modules.Logging
             _resultLogAction = resultLogAction;
         }
 
+        /// <exception cref="InvalidCastException">Type mismatch between <see cref="LambdaLogger{TReturn}"/> and <see cref="PolicyBuilder{TReturn}"/>.</exception>
+        /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         public override void RegisterEvents<T>(IPolicyEvents<T> eventsSource)
         {
             base.RegisterEvents(eventsSource);
