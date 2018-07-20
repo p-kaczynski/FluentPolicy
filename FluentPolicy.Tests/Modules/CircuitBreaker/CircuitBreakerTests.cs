@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentPolicy.Modules.CircuitBreaker;
-using Should;
+using FluentAssertions;
 using Xunit;
 
 namespace FluentPolicy.Tests.Modules.CircuitBreaker
@@ -41,7 +41,7 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                     .For().AllOtherExceptions().Rethrow()
                     .AddModule(breaker)
                     .Execute()
-                    .ShouldEqual(SampleReturnString);
+                    .Should().Be(SampleReturnString);
             }
         }
 
@@ -62,9 +62,9 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                 // 4 exceptions
                 policy
                     .Execute()
-                    .ShouldEqual(SampleReturnString);
+                    .Should().Be(SampleReturnString);
             }
-            new Action(() => policy.Execute()).ShouldThrow<CircuitBreakerException>();
+            new Action(() => policy.Execute()).Should().Throw<CircuitBreakerException>();
         }
 
         [Fact]
@@ -85,12 +85,12 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
                 // 4 exceptions
                 policy
                     .Execute()
-                    .ShouldEqual(SampleReturnString);
+                    .Should().Be(SampleReturnString);
             }
-            new Action(() => policy.Execute()).ShouldThrow<CircuitBreakerException>();
-            new Action(() => policy.Execute(TestFunction)).ShouldThrow<CircuitBreakerException>();
+            new Action(() => policy.Execute()).Should().Throw<CircuitBreakerException>();
+            new Action(() => policy.Execute(TestFunction)).Should().Throw<CircuitBreakerException>();
             Thread.Sleep(breaker.CooldownTime);
-            policy.Execute(TestFunction).ShouldEqual(SampleReturnString);
+            policy.Execute(TestFunction).Should().Be(SampleReturnString);
         }
 
         // Tests for built in in-memory persistence
@@ -117,7 +117,7 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
             // there are multiplier * root calls, spread evently amongst multiplier policy/behaviour guids. That means, that each behaviour should have root exceptions... I think
             for (var i = 0; i < multiplier; ++i)
                 _freshPersistence.GetExceptionCount(policies[i], behaviours[i], TimeSpan.FromMilliseconds(1000000))
-                    .ShouldEqual(root);
+                    .Should().Be(root);
         }
 
         [Fact]
@@ -126,11 +126,13 @@ namespace FluentPolicy.Tests.Modules.CircuitBreaker
             var policy = Guid.NewGuid();
             _freshPersistence.SetPolicyAsTripped(policy);
             var first = _freshPersistence.GetPolicyLastTripTime(policy);
-            first.ShouldBeGreaterThan(DateTime.Now - TimeSpan.FromMinutes(10));
+            first.Should().HaveValue();
+            first.Value.Should().BeAfter(DateTime.Now - TimeSpan.FromMinutes(10));
 
             _freshPersistence.SetPolicyAsTripped(policy);
             var second = _freshPersistence.GetPolicyLastTripTime(policy);
-            second.ShouldBeGreaterThan(first);
+            second.Should().HaveValue();
+            second.Value.Should().BeAfter(first.Value);
         }
 
         // Helper methods

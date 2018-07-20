@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using FluentPolicy.Exceptions;
-using Should;
+using FluentAssertions;
 using Xunit;
 
 namespace FluentPolicy.Tests
@@ -20,7 +20,7 @@ namespace FluentPolicy.Tests
                     .For().Exception<ArgumentNullException>().Rethrow()
                     .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(s => s.ToUpper())
                 ;
-            policy.ShouldNotBeNull();
+            policy.Should().NotBeNull();
         }
 
         [Fact]
@@ -30,7 +30,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Rethrow()
                 .ExecuteAsync();
                 
-                result.ShouldEqual(SampleReturnString);
+                result.Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -42,7 +42,7 @@ namespace FluentPolicy.Tests
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(testString)
                 .ExecuteAsync();
 
-            result.ShouldEqual(testString);
+            result.Should().Be(testString);
         }
 
         [Fact]
@@ -55,7 +55,7 @@ namespace FluentPolicy.Tests
                 .ExecuteAsync()
                 );
 
-            ex.Message.ShouldEqual(SampleReturnString);
+            ex.Message.Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -67,7 +67,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<ArgumentNullException>().Rethrow()
                 .ExecuteAsync();
             
-            result.ShouldEqual(otherReturnValue);
+            result.Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -79,7 +79,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<ArgumentNullException>().Rethrow()
                 .ExecuteAsync();
             
-            result.ShouldEqual(otherReturnValue);
+            result.Should().Be(otherReturnValue);
         }
 
 
@@ -94,7 +94,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
                 .ExecuteAsync();
             
-            result.ShouldEqual(otherReturnValue);
+            result.Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -108,7 +108,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
                 .ExecuteAsync();
             
-            result.ShouldEqual(otherReturnValue);
+            result.Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -120,7 +120,7 @@ namespace FluentPolicy.Tests
                 .ExecuteAsync()
                 );
 
-            ex.ShouldBeSameAs(ReusableException);
+            ex.Should().BeSameAs(ReusableException);
         }
 
         [Fact]
@@ -145,8 +145,8 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .ExecuteAsync());
 
-            ex.ShouldNotBeNull();
-            ex.Message.ShouldEqual(testMessage);
+            ex.Should().NotBeNull();
+            ex.Message.Should().Be(testMessage);
         }
 
         [Fact]
@@ -182,7 +182,7 @@ namespace FluentPolicy.Tests
                 .ExecuteAsync()
                 );
 
-            ex.Message.ShouldEqual(testMessage);
+            ex.Message.Should().Be(testMessage);
         }
 
         [Fact]
@@ -196,7 +196,7 @@ namespace FluentPolicy.Tests
                 .For().AllOtherExceptions().Return(otherMessage)
                 .ExecuteAsync();
 
-                result.ShouldEqual(otherMessage);
+                result.Should().Be(otherMessage);
         }
 
         [Fact]
@@ -206,7 +206,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().ReturnAsync(TestFunction)
                 .ExecuteAsync();
 
-            result.ShouldEqual(SampleReturnString);
+            result.Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -216,7 +216,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().ReturnAsync(TestFunction())
                 .ExecuteAsync();
 
-            result.ShouldEqual(SampleReturnString);
+            result.Should().Be(SampleReturnString);
         }
 
 

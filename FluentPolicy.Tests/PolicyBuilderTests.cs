@@ -1,6 +1,6 @@
 ﻿using System;
 using Moq;
-using Should;
+using FluentAssertions;
 using Xunit;
 
 namespace FluentPolicy.Tests
@@ -27,7 +27,7 @@ namespace FluentPolicy.Tests
                     .For().Exception<ArgumentNullException>().Rethrow()
                     .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(s => s.ToUpper())
                     ;
-            policy.ShouldNotBeNull();
+            policy.Should().NotBeNull();
         }
 
         [Fact]
@@ -35,7 +35,7 @@ namespace FluentPolicy.Tests
         {
             As.Func(TestFunction).WithPolicy()
                 .For().Exception<TestException>().Rethrow()
-                .Execute().ShouldEqual(SampleReturnString);
+                .Execute().Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace FluentPolicy.Tests
 
             As.Func(TestFunction).WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Return(testString)
-                .Execute().ShouldEqual(testString);
+                .Execute().Should().Be(testString);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace FluentPolicy.Tests
         {
             As.Func(TestFunction).WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).ReturnDefault()
-                .Execute().ShouldBeNull();
+                .Execute().Should().BeNull();
         }
 
         [Fact]
@@ -62,7 +62,7 @@ namespace FluentPolicy.Tests
             Assert.Throws<Exception>(() => As.Func(TestFunction).WithPolicy()
                 .For().ReturnValue(s => s.Equals(SampleReturnString)).Throw(s => new Exception(s))
                 .Execute()
-                ).Message.ShouldEqual(SampleReturnString);
+                ).Message.Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace FluentPolicy.Tests
             As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldEqual(otherReturnValue);
+                .Execute().Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -81,7 +81,7 @@ namespace FluentPolicy.Tests
             As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<TestException>().Return(TestFunction)
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldEqual(SampleReturnString);
+                .Execute().Should().Be(SampleReturnString);
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace FluentPolicy.Tests
             As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>().Return(otherReturnValue)
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldEqual(otherReturnValue);
+                .Execute().Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace FluentPolicy.Tests
             As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<TestException>().ReturnDefault()
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldBeNull();
+                .Execute().Should().BeNull();
         }
 
         [Fact]
@@ -109,7 +109,7 @@ namespace FluentPolicy.Tests
             As.Func(TestFunctionException).WithPolicy()
                 .For().Exception<OtherTestException>().Or<TestException>().ReturnDefault()
                 .For().Exception<ArgumentNullException>().Rethrow()
-                .Execute().ShouldBeNull();
+                .Execute().Should().BeNull();
         }
 
 
@@ -122,7 +122,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
-                .Execute().ShouldEqual(otherReturnValue);
+                .Execute().Should().Be(otherReturnValue);
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<OtherTestException>().Or<TestException>(e => e.Message.Equals(SampleExceptionMessage)).Return(otherReturnValue)
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
-                .Execute().ShouldEqual(otherReturnValue);
+                .Execute().Should().Be(otherReturnValue);
         }
 
         ///<remarks> This also tests for correct order of evaluation</remarks>
@@ -144,7 +144,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>(e => e.Message.Equals(SampleExceptionMessage)).ReturnDefault()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
-                .Execute().ShouldBeNull();
+                .Execute().Should().BeNull();
         }
 
         [Fact]
@@ -154,7 +154,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<OtherTestException>().Or<TestException>(e => e.Message.Equals(SampleExceptionMessage)).ReturnDefault()
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Rethrow()
                 .For().Exception<TestException>().Throw(e => new Exception("This should not get thrown"))
-                .Execute().ShouldBeNull();
+                .Execute().Should().BeNull();
         }
 
         [Fact]
@@ -165,7 +165,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Return(SampleReturnString)
                 .Execute()
                 );
-            ex.ShouldBeSameAs(ReusableException);
+            ex.Should().BeSameAs(ReusableException);
         }
 
         [Fact]
@@ -178,8 +178,8 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>(e => e.Message.Equals(SampleReturnString)).Return(otherReturnValue)
                 .For().Exception<TestException>().Return(otherReturnValue)
                 .Execute());
-            ex.ShouldNotBeNull();
-            ex.Message.ShouldEqual(testMessage);
+            ex.Should().NotBeNull();
+            ex.Message.Should().Be(testMessage);
         }
 
         [Fact]
@@ -214,7 +214,7 @@ namespace FluentPolicy.Tests
                 .For().AllOtherExceptions().Throw(e => new TestException(testMessage))
                 .Execute()
                 );
-            ex.Message.ShouldEqual(testMessage);
+            ex.Message.Should().Be(testMessage);
         }
 
         [Fact]
@@ -227,7 +227,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().Return(otherMessage)
                 .Execute()
-                .ShouldEqual(otherMessage);
+                .Should().Be(otherMessage);
         }
 
         [Fact]
@@ -240,7 +240,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<DifferentException>().Return(string.Empty)
                 .For().AllOtherExceptions().ReturnDefault()
                 .Execute()
-                .ShouldBeNull();
+                .Should().BeNull();
         }
 
         // Retries
@@ -253,7 +253,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Repeat().Then().Return(-1)
                 .Execute();
 
-            result.ShouldEqual(-1);
+            result.Should().Be(-1);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(2));
         }
 
@@ -267,7 +267,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Repeat(howMany).Then().Return(-1)
                 .Execute();
 
-            result.ShouldEqual(-1);
+            result.Should().Be(-1);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany + 1));
         }
 
@@ -282,7 +282,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().Repeat(howMany,(e, i)=>_repeat.Call()).Then().Return(SampleReturnString)
                 .Execute();
 
-            result.ShouldEqual(SampleReturnString);
+            result.Should().Be(SampleReturnString);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany));
         }
 
@@ -296,7 +296,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().WaitAndRepeat(timeSpans).Then().Return(-1)
                 .Execute();
 
-            result.ShouldEqual(-1);
+            result.Should().Be(-1);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(timeSpans.Length + 1));
         }
 
@@ -310,7 +310,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().WaitAndRepeat(timeSpans, (exception, i) => _repeat.Call()).Then().Return(SampleReturnString)
                 .Execute();
 
-            result.ShouldEqual(SampleReturnString);
+            result.Should().Be(SampleReturnString);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(timeSpans.Length));
         }
 
@@ -324,7 +324,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().WaitAndRepeat(howMany, i=>TimeSpan.FromMilliseconds(10*Math.Pow(2,i))).Then().Return(-1)
                 .Execute();
 
-            result.ShouldEqual(-1);
+            result.Should().Be(-1);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany + 1));
         }
 
@@ -338,7 +338,7 @@ namespace FluentPolicy.Tests
                 .For().Exception<TestException>().WaitAndRepeat(howMany, i => TimeSpan.FromMilliseconds(10 * Math.Pow(2, i)), (exception, i) => _repeat.Call()).Then().Return(SampleReturnString)
                 .Execute();
 
-            result.ShouldEqual(SampleReturnString);
+            result.Should().Be(SampleReturnString);
             _repeatMock.Verify(r => r.Call(), Times.Exactly(howMany));
         }
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentPolicy.Modules.Logging;
-using Should;
+using FluentAssertions;
 using Xunit;
 
 namespace FluentPolicy.Tests.Modules.Logging
@@ -24,10 +24,10 @@ namespace FluentPolicy.Tests.Modules.Logging
                 .Execute();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
+            returnStr.Should().Be(SampleReturnString);
 
-            exceptionList.Count.ShouldEqual(1);
-            exceptionList.First().Message.ShouldEqual(SampleExceptionMessage);
+            exceptionList.Count.Should().Be(1);
+            exceptionList.First().Message.Should().Be(SampleExceptionMessage);
         }
 
 
@@ -42,9 +42,9 @@ namespace FluentPolicy.Tests.Modules.Logging
                 .Execute();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
+            returnStr.Should().Be(SampleReturnString);
 
-            exceptionList.Count.ShouldEqual(0);
+            exceptionList.Count.Should().Be(0);
         }
 
         [Fact]
@@ -58,10 +58,10 @@ namespace FluentPolicy.Tests.Modules.Logging
                 .ExecuteAsync();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
+            returnStr.Should().Be(SampleReturnString);
 
-            exceptionList.Count.ShouldEqual(1);
-            exceptionList.First().Message.ShouldEqual(SampleExceptionMessage);
+            exceptionList.Count.Should().Be(1);
+            exceptionList.First().Message.Should().Be(SampleExceptionMessage);
         }
 
 
@@ -76,9 +76,9 @@ namespace FluentPolicy.Tests.Modules.Logging
                 .ExecuteAsync();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
+            returnStr.Should().Be(SampleReturnString);
 
-            exceptionList.Count.ShouldEqual(0);
+            exceptionList.Count.Should().Be(0);
         }
 
         // Helper methods

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using FluentPolicy.Modules.Callback;
-using Should;
+using FluentAssertions;
 using Xunit;
 
 namespace FluentPolicy.Tests.Modules.Callback
@@ -20,8 +20,8 @@ namespace FluentPolicy.Tests.Modules.Callback
                 .Execute();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
-            toBeTrue.ShouldBeTrue();
+            returnStr.Should().Be(SampleReturnString);
+            toBeTrue.Should().BeTrue();
         }
 
         [Fact]
@@ -35,8 +35,8 @@ namespace FluentPolicy.Tests.Modules.Callback
                 .Execute();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
-            toBeTrue.ShouldBeFalse();
+            returnStr.Should().Be(SampleReturnString);
+            toBeTrue.Should().BeFalse();
         }
 
         [Fact]
@@ -50,8 +50,8 @@ namespace FluentPolicy.Tests.Modules.Callback
                 .ExecuteAsync();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
-            toBeTrue.ShouldBeTrue();
+            returnStr.Should().Be(SampleReturnString);
+            toBeTrue.Should().BeTrue();
         }
 
         [Fact]
@@ -65,8 +65,8 @@ namespace FluentPolicy.Tests.Modules.Callback
                 .ExecuteAsync();
 
             // Make sure the test policy executed correctly
-            returnStr.ShouldEqual(SampleReturnString);
-            toBeTrue.ShouldBeFalse();
+            returnStr.Should().Be(SampleReturnString);
+            toBeTrue.Should().BeFalse();
         }
 
         private static async Task<string> TestFunctionAsync()
