@@ -5,6 +5,14 @@ Fluent Policy
 FluentPolicy offers a fluent syntax for creating policies concerning handling exceptions and return values from synchronous and asynchronous sources. It can be used to remove a lot of boilerplate code and allow methods to focus on what's actually relevant to them.
 
 This library is heavily inspired by [Polly](https://github.com/michael-wolfenden/Polly). As Polly is much more mature solution I recommend using it, if the functionality offered is sufficient.
+
+## Installation
+FluentPolicy is available on [NuGet](https://www.nuget.org/packages/FluentPolicy/)
+
+```
+Install-Package FluentPolicy -Version 1.0.2
+```
+
 ## Usage
 Entry point to FluentPolicy is either a Func<T> or Task<T> for respectively synchronous or asynchronous mode of operations. To create a policy for them use `WithPolicy` extension methods. This will give you access to `For()` method that allows specifying conditions - either an exception that was thrown, or a return value was obtained and needs to be checked.
 
