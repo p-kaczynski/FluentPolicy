@@ -7,7 +7,7 @@ namespace FluentPolicy
 {
     internal abstract class PredicatedBehaviour<TReturn>
     {
-        public Guid Id { get; private set; }
+        public Guid Id { get; }
         public abstract void SetSimpleBehaviour(Func<TReturn> factory);
         public abstract void SetSimpleBehaviourAsync(Func<Task<TReturn>> factory);
 
@@ -24,28 +24,28 @@ namespace FluentPolicy
         private Func<TPredicate, Guid, TReturn> _behaviour;
         private Func<TPredicate, Guid, Task<TReturn>> _behaviourAsync;
 
-        public Func<TPredicate, TReturn> Behaviour
+        internal Func<TPredicate, TReturn> Behaviour
         {
             set { _behaviour = (input, guid) => value(input); }
         }
 
-        public Func<TPredicate, Task<TReturn>> BehaviourAsync
+        internal Func<TPredicate, Task<TReturn>> BehaviourAsync
         {
             set { _behaviourAsync = (input, guid) => value(input); }
         }
 
-        public void AddPredicate(Func<TPredicate, bool> predicate)
+        internal void AddPredicate(Func<TPredicate, bool> predicate)
         {
             _predicates.Add(predicate);
         }
 
-        public void CopyPredicatesTo(PredicatedBehaviour<TPredicate, TReturn> target)
+        internal void CopyPredicatesTo(PredicatedBehaviour<TPredicate, TReturn> target)
         {
             foreach(var predicate in _predicates)
                 target.AddPredicate(predicate);
         }
 
-        public bool Test(TPredicate value)
+        internal bool Test(TPredicate value)
         {
             return _predicates.Any(predicate => predicate(value));
         }

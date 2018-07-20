@@ -4,9 +4,9 @@ namespace FluentPolicy
 {
     internal class WaitAndRetry : Exception
     {
-        public TimeSpan WaitTime { get; set; }
+        internal TimeSpan WaitTime { get; }
 
-        public WaitAndRetry(TimeSpan waitTime)
+        internal WaitAndRetry(TimeSpan waitTime)
         {
             WaitTime = waitTime;
         }

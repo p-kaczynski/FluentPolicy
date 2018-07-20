@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
+using JetBrains.Annotations;
 using Timer = System.Timers.Timer;
 
 namespace FluentPolicy.Modules.CircuitBreaker
@@ -20,11 +21,13 @@ namespace FluentPolicy.Modules.CircuitBreaker
         /// <value>
         ///     The maximum remember time.
         /// </value>
+        [PublicAPI]
         public TimeSpan MaxRememberTime { get; set; }
 
+        [PublicAPI]
         public int CleanUpMilliseconds
         {
-            get { return _cleanUpMilliseconds; }
+            get => _cleanUpMilliseconds;
             set
             {
                 _cleanUpMilliseconds = value;
@@ -51,6 +54,7 @@ namespace FluentPolicy.Modules.CircuitBreaker
         /// <summary>
         ///     Initializes a new instance of the <see cref="CircuitBreakerInMemoryPersistence" /> class.
         /// </summary>
+        [PublicAPI]
         public CircuitBreakerInMemoryPersistence()
         {
             _selfCleanUpTimer.Elapsed += (sender, args) => CleanUp();
@@ -75,14 +79,12 @@ namespace FluentPolicy.Modules.CircuitBreaker
                             _storage[policy][behaviour] = newBag;
                         else
                         {
-                            ConcurrentBag<DateTime> devNull;
-                            _storage[policy].TryRemove(behaviour, out devNull);
+                            _storage[policy].TryRemove(behaviour, out _);
                         }
                     }
                     if (!_storage[policy].Any())
                     {
-                        ConcurrentDictionary<Guid, ConcurrentBag<DateTime>> devNull;
-                        _storage.TryRemove(policy, out devNull);
+                        _storage.TryRemove(policy, out _);
                     }
                 }
             }
@@ -151,11 +153,9 @@ namespace FluentPolicy.Modules.CircuitBreaker
             _lock.EnterReadLock();
             try
             {
-                DateTime dt;
-                if (_trips.TryGetValue(policyId, out dt))
-                    return dt;
-
-                return null;
+                return _trips.TryGetValue(policyId, out var dt) 
+                    ? dt 
+                    : (DateTime?) null;
             }
             finally
             {

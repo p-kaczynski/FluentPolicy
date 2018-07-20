@@ -10,8 +10,10 @@ namespace FluentPolicy.Modules.CircuitBreaker
     ///     Allows monitoring of errors or invalid returns from a policy implementation, and cuts off access to it, if treshold
     ///     is reached
     /// </summary>
+    [PublicAPI]
     [SuppressMessage("ReSharper", "ThrowingSystemException",
         Justification = "Actually throws whatever exception is created by ExceptionFactory")]
+    // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global - PublicAPI
     public class CircuitBreaker : BaseModule
     {
         private static readonly Func<CircuitBreakerException, Exception> DefaultExceptionFactory = c => c;
@@ -41,62 +43,66 @@ namespace FluentPolicy.Modules.CircuitBreaker
         ///     trigger it.
         ///     Default: false
         /// </summary>
+        [PublicAPI]
         public bool TripForAll { get; set; }
 
         /// <summary>
         ///     If true, each exception behaviour configured by policy will have separate counter.
         ///     Default: true
         /// </summary>
+        [PublicAPI]
         public bool DifferentiateBetweenBehaviours { get; set; }
 
         /// <summary>
         ///     If true, will reset behaviour exception count.
         ///     Default: false
         /// </summary>
+        [PublicAPI]
         public bool ResetCountAfterTrip { get; set; }
 
         /// <summary>
         ///     How long to remember exceptions
         ///     Default: 24 hours
         /// </summary>
+        [PublicAPI]
         public TimeSpan ExceptionsExpireAfter { get; set; }
 
         /// <summary>
         ///     How long until the circuit breaker resets itself
         ///     Default: 1 minute
         /// </summary>
+        [PublicAPI]
         public TimeSpan CooldownTime { get; set; }
 
         /// <summary>
         ///     If provided, will be used to provide verbose logging
         ///     Default: dev>null
         /// </summary>
+        [PublicAPI]
         public Action<string> LogAction
         {
-            get { return _logAction; }
-            set
-            {
-                _logAction = value;
-                if (_logAction != null)
-                    _loggingEnabled = true;
-            }
+            get => _logAction;
+            set => _loggingEnabled = (_logAction = value) != null;
         }
 
         /// <summary>
         ///     How many exceptions in the period of time (<see cref="ExceptionsExpireAfter" />) will trip the breaker
         ///     Default: 5
         /// </summary>
+        [PublicAPI]
         public int Sensitivity { get; set; }
 
         /// <summary>
         ///     What exception should be raised when the function is called, but the circuit breaker is tripped
         /// </summary>
+        [PublicAPI]
         public Func<CircuitBreakerException, Exception> ExceptionFactory { get; set; }
 
         /// <summary>
         ///     Creates new instance of the CircuitBreaker
         /// </summary>
         /// <param name="persistence">Implementation of interface that provides persistence between calls</param>
+        [PublicAPI]
         public CircuitBreaker(ICircuitBreakerPersistence persistence) : this()
         {
             Persistence = persistence;
@@ -125,10 +131,11 @@ namespace FluentPolicy.Modules.CircuitBreaker
         ///     If the exception count in a given timeframe exceed allowed limit. Created by
         ///     <see cref="ExceptionFactory" />
         /// </exception>
+        [PublicAPI]
         protected virtual void OnException(object policyObj, ExceptionThrownEventArgs args)
         {
             if (_loggingEnabled)
-                LogAction(string.Format("OnException: Processing exception {0}",args.Exception));
+                LogAction($"OnException: Processing exception {args.Exception}");
 
             var guid = args.HandlerBehaviourGuid;
 
@@ -169,11 +176,12 @@ namespace FluentPolicy.Modules.CircuitBreaker
         ///     If the exception count in a given timeframe exceed allowed limit. Created by
         ///     <see cref="ExceptionFactory" />
         /// </exception>
+        [PublicAPI]
         protected virtual void Check(Guid policyId, Guid behaviourGuid)
         {
             var errorsInTimeSpan = Persistence.GetExceptionCount(policyId, behaviourGuid, ExceptionsExpireAfter);
             if (_loggingEnabled)
-                LogAction(string.Format("Checking current exception level: {0}/{1}", errorsInTimeSpan, Sensitivity));
+                LogAction($"Checking current exception level: {errorsInTimeSpan}/{Sensitivity}");
             if (errorsInTimeSpan < Sensitivity) return;
 
             if (_loggingEnabled)

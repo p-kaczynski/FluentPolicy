@@ -7,12 +7,13 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentPolicy.Exceptions;
+using JetBrains.Annotations;
 
 namespace FluentPolicy
 {
     public abstract class PolicyBuilder
     {
-        public Guid Id { get; private set; }
+        public Guid Id { get; }
 
         protected PolicyBuilder()
         {
@@ -38,32 +39,34 @@ namespace FluentPolicy
 
         private readonly RepeatHelper _repeatHelper = new RepeatHelper();
 
+        [PublicAPI]
         public PolicyBuilder()
         {
             
         }
 
+        [PublicAPI]
         public IPolicyBaseState<TReturn> Setup()
         {
             return this;
         }
 
+        [PublicAPI]
         public PolicyBuilder(Func<TReturn> func)
         {
             _func = func;
         }
 
+        [PublicAPI]
         public PolicyBuilder(Func<Task<TReturn>> func)
         {
             _funcAsync = func;
             _func =
-                () =>
-                {
-                    throw new AsyncPolicyException(
-                        "This policy was created from an async function, and must be executed using ExecuteAsync");
-                };
+                () => throw new AsyncPolicyException(
+                    "This policy was created from an async function, and must be executed using ExecuteAsync");
         }
 
+        [PublicAPI]
         public IPolicyBaseState<TReturn> AddModule(IPolicyModule module)
         {
             _modules.Add(module);
@@ -103,14 +106,13 @@ namespace FluentPolicy
                         // Find behaviour
                         var exceptionBehaviour = GetExceptionBehaviour(b => b.Test(ex));
 
-                        if (ExceptionThrown != null)
-                            ExceptionThrown(this,
-                                new ExceptionThrownEventArgs
-                                {
-                                    Exception = ex,
-                                    HandlerBehaviourGuid =
-                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?) null
-                                });
+                        ExceptionThrown?.Invoke(this,
+    new ExceptionThrownEventArgs
+    {
+        Exception = ex,
+        HandlerBehaviourGuid =
+            exceptionBehaviour?.Id
+    });
 
                         if (exceptionBehaviour == null) throw;
 
@@ -122,8 +124,7 @@ namespace FluentPolicy
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
 
                     // Result obtained!
-                    if (ReturnValueObtained != null)
-                        ReturnValueObtained(resultBehaviour, result);
+                    ReturnValueObtained?.Invoke(resultBehaviour, result);
 
                     // Call modules
                     foreach (var module in _modules)
@@ -162,7 +163,7 @@ namespace FluentPolicy
                     foreach (var module in _modules)
                         module.BeforeCall(this);
 
-                    TReturn result = default(TReturn);
+                    TReturn result = default;
 
                     Task<TReturn> exceptionReturn = null;
                     try
@@ -174,14 +175,13 @@ namespace FluentPolicy
                         // Find behaviour
                         var exceptionBehaviour = GetExceptionBehaviour(b => b.Test(ex));
 
-                        if (ExceptionThrown != null)
-                            ExceptionThrown(this,
-                                new ExceptionThrownEventArgs
-                                {
-                                    Exception = ex,
-                                    HandlerBehaviourGuid =
-                                        exceptionBehaviour != null ? exceptionBehaviour.Id : (Guid?) null
-                                });
+                        ExceptionThrown?.Invoke(this,
+    new ExceptionThrownEventArgs
+    {
+        Exception = ex,
+        HandlerBehaviourGuid =
+            exceptionBehaviour?.Id
+    });
 
                         if (exceptionBehaviour == null) throw;
 
@@ -197,8 +197,7 @@ namespace FluentPolicy
                     var resultBehaviour = _resultBehaviourStack.ToArray().Reverse().FirstOrDefault(b => b.Test(result));
 
                     // Result obtained!
-                    if (ReturnValueObtained != null)
-                        ReturnValueObtained(resultBehaviour, result);
+                    ReturnValueObtained?.Invoke(resultBehaviour, result);
 
                     // Call modules
                     foreach (var module in _modules)
@@ -258,7 +257,7 @@ namespace FluentPolicy
         {
             var behaviour = new PredicatedBehaviour<Exception, TReturn>();
             _lastCreatedBehaviour = behaviour;
-            behaviour.AddPredicate(e => e is TException && predicate((TException) e));
+            behaviour.AddPredicate(e => e is TException exception && predicate(exception));
 
             _exceptionBehaviourStack.Push(behaviour);
             return this;
@@ -274,7 +273,7 @@ namespace FluentPolicy
         IPolicyExceptionConfigExpression<TReturn> IPolicyExceptionConfigExpression<TReturn>.Or<TException>(
             Func<TException, bool> predicate)
         {
-            _exceptionBehaviourStack.Peek().AddPredicate(e => e is TException && predicate((TException) e));
+            _exceptionBehaviourStack.Peek().AddPredicate(e => e is TException exception && predicate(exception));
 
             return this;
         }
@@ -294,7 +293,7 @@ namespace FluentPolicy
         [EditorBrowsable(EditorBrowsableState.Never)]
         Guid IPolicyConfigExpression<TReturn>.GetGuid()
         {
-            return _lastCreatedBehaviour != null ? _lastCreatedBehaviour.Id : Guid.Empty;
+            return _lastCreatedBehaviour?.Id ?? Guid.Empty;
         }
 
         IPolicyBaseState<TReturn> IPolicyConfigExpression<TReturn>.Return(TReturn returnObject)
@@ -327,7 +326,7 @@ namespace FluentPolicy
 
         public IPolicyBaseState<TReturn> ReturnDefault()
         {
-            _lastCreatedBehaviour.SetSimpleBehaviour(()=>default(TReturn));
+            _lastCreatedBehaviour.SetSimpleBehaviour(()=>default);
 
             return this;
         }
@@ -352,7 +351,7 @@ namespace FluentPolicy
 
         IPolicyBaseState<TReturn> IPolicyExceptionConfigExpression<TReturn>.Throw(Func<Exception, Exception> factory)
         {
-            _exceptionBehaviourStack.Peek().Behaviour = e => { throw factory(e); };
+            _exceptionBehaviourStack.Peek().Behaviour = e => throw factory(e);
 
             return this;
         }
@@ -366,7 +365,7 @@ namespace FluentPolicy
 
         IPolicyBaseState<TReturn> IPolicyReturnValueConfigExpression<TReturn>.Throw(Func<TReturn, Exception> factory)
         {
-            _resultBehaviourStack.Peek().Behaviour = r => { throw factory(r); };
+            _resultBehaviourStack.Peek().Behaviour = r => throw factory(r);
 
             return this;
         }
@@ -491,6 +490,7 @@ namespace FluentPolicy
 
         /// <exception cref="FailureLimitExceededException">Failure limit exceeded.</exception>
         /// <exception cref="WaitAndRetry">Handled internally.</exception>
+        [AssertionMethod]
         public T Handle<T>(Guid behaviourId, Exception ex, int maximumRetries, Func<int, TimeSpan> getWaitTime, Action<Exception, int> callback)
         {
             var retry = _retryDictionary.AddOrUpdate(behaviourId, 1, (id, count) => count + 1);
@@ -501,11 +501,6 @@ namespace FluentPolicy
             callback(ex, retry);
             var waitTime = getWaitTime(retry);
             throw new WaitAndRetry(waitTime);
-
-#pragma warning disable 162
-            // ReSharper disable once HeuristicUnreachableCode
-            return default(T); // for compiler :)
-#pragma warning restore 162
         }
     }
 }

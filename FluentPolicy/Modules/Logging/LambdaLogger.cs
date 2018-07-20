@@ -1,4 +1,5 @@
 ﻿using System;
+using JetBrains.Annotations;
 
 namespace FluentPolicy.Modules.Logging
 {
@@ -22,6 +23,7 @@ namespace FluentPolicy.Modules.Logging
     {
         private readonly Action<TReturn> _resultLogAction;
 
+        [PublicAPI]
         public LambdaLogger(Action<Exception> exceptionLogAction, Action<TReturn> resultLogAction) : base(exceptionLogAction)
         {
             _resultLogAction = resultLogAction;
@@ -35,8 +37,7 @@ namespace FluentPolicy.Modules.Logging
 
             if (!typeof (TReturn).IsAssignableFrom(typeof (T)))
                 throw new InvalidCastException(
-                    string.Format("This LambdaLogger is valid for type {0}, and cannot be used with policy typed {1}",
-                        typeof (TReturn).Name, typeof (T).Name));
+                    $"This LambdaLogger is valid for type {typeof(TReturn).Name}, and cannot be used with policy typed {typeof(T).Name}");
 
             // This is a bit awful cast, but it makes sense - it will work due to the previous IsAssignableFrom check
             eventsSource.ReturnValueObtained += (sender, e) => _resultLogAction((TReturn)(object) e);

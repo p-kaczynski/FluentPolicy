@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-	<Title>FluentPolicy</Title>
+    <Title>FluentPolicy</Title>
     <TargetFrameworks>netstandard2.0;net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
@@ -14,7 +14,7 @@
   <PropertyGroup>
     <Title>FluentPolicy</Title>
     <LangVersion>7.1</LangVersion>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Paweł Kaczyński</Authors>
     <Description>FluentPolicy offers a fluent syntax for creating policies concerning handling exceptions and return values from synchronous and asynchronous sources. It can be used to remove a lot of boilerplate code and allow methods to focus on what's actually relevant to them.</Description>
     <Copyright>MIT</Copyright>

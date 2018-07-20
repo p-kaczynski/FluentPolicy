@@ -1,7 +1,9 @@
 ﻿using System;
+using JetBrains.Annotations;
 
 namespace FluentPolicy
 {
+    [PublicAPI]
     public interface IPolicyModule
     {
         void RegisterEvents<TReturn>(IPolicyEvents<TReturn> eventsSource);
